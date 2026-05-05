@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #070b1b;
+  --panel: #0c132a;
+  --panel-soft: #111a36;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --brand: #7c3aed;
+  --brand-2: #a855f7;
+  --line: #1f2a44;
+}
+
+.theme-light {
+  --bg: #f4f6fb;
+  --panel: #ffffff;
+  --panel-soft: #f8f8ff;
+  --text: #0f172a;
+  --muted: #64748b;
+  --brand: #6d28d9;
+  --brand-2: #a855f7;
+  --line: #e2e8f0;
+}
+
+.theme-dark {
+  --bg: #070b1b;
+  --panel: #0c132a;
+  --panel-soft: #111a36;
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --brand: #7c3aed;
+  --brand-2: #a855f7;
+  --line: #1f2a44;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: radial-gradient(circle at 80% 0%, rgba(124, 58, 237, 0.15), transparent 35%), var(--bg);
+  color: var(--text);
+}
