@@ -23,6 +23,8 @@ VITE_SUPABASE_URL=https://pimmweiqnensrevyzvqn.supabase.co
 VITE_SUPABASE_ANON_KEY=
 ```
 
+Vite carga `.env.development` al ejecutar `npm run dev` y `.env.production` al ejecutar `npm run build`.
+
 Nunca pongas en React `DB_PASSWORD`, `DB_HOST` ni `SUPABASE_SERVICE_ROLE_KEY`.
 
 ## Regla de integracion
