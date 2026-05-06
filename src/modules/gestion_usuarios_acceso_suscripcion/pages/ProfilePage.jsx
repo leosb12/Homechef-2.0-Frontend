@@ -118,14 +118,14 @@ export default function ProfilePage() {
   return (
     <section className="max-w-[1020px] space-y-4" style={{ color: 'var(--text)' }}>
       <header
-        className="rounded-[26px] border px-8 py-6 relative overflow-hidden"
+        className="rounded-[26px] border px-4 py-5 sm:px-8 sm:py-6 relative overflow-hidden"
         style={{
           borderColor: 'var(--line)',
           background:
             'radial-gradient(circle at 82% 16%, rgba(124,58,237,.10), transparent 30%), linear-gradient(90deg, rgba(124,58,237,.03), rgba(168,85,247,.07))',
         }}
       >
-        <div className="flex items-center gap-6 relative z-10">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-6 relative z-10">
           <div
             className="grid place-items-center text-white"
             style={{
@@ -147,7 +147,7 @@ export default function ProfilePage() {
         </div>
       </header>
 
-      <form onSubmit={onSaveProfile} className="rounded-3xl border p-6" style={{ borderColor: 'var(--line)', color: 'var(--text)', backgroundColor: 'var(--panel)' }}>
+      <form onSubmit={onSaveProfile} className="rounded-3xl border p-4 sm:p-6" style={{ borderColor: 'var(--line)', color: 'var(--text)', backgroundColor: 'var(--panel)' }}>
         <SectionTitle icon={<UserIcon className="h-5 w-5" />} title="Datos personales" subtitle="Actualiza tu información personal." />
 
         <div className="mt-3 grid md:grid-cols-2 gap-3">
@@ -159,7 +159,7 @@ export default function ProfilePage() {
           <Field label="Dirección" value={form.address} onChange={(v) => setForm({ ...form, address: v })} icon={<PinIcon className="h-4 w-4" />} placeholder="Ingresa tu dirección" />
         </div>
 
-        <div className="mt-20 flex items-center justify-between gap-3 flex-wrap">
+        <div className="mt-8 sm:mt-20 flex items-center justify-between gap-3 flex-wrap">
           <button
             disabled={savingProfile}
             className="h-10 px-6 rounded-xl text-white font-semibold flex items-center gap-2 disabled:opacity-60"
@@ -173,7 +173,7 @@ export default function ProfilePage() {
       </form>
 
       <div className="grid lg:grid-cols-2 gap-4">
-        <form onSubmit={onSavePassword} className="rounded-3xl border p-6" style={{ borderColor: 'var(--line)', color: 'var(--text)', backgroundColor: 'var(--panel)' }}>
+        <form onSubmit={onSavePassword} className="rounded-3xl border p-4 sm:p-6" style={{ borderColor: 'var(--line)', color: 'var(--text)', backgroundColor: 'var(--panel)' }}>
           <SectionTitle icon={<LockIcon className="h-5 w-5" />} title="Cambiar contraseña" subtitle="Asegura tu cuenta con una contraseña fuerte." />
 
           <Field
@@ -209,7 +209,7 @@ export default function ProfilePage() {
           />
           </div>
 
-          <div className="mt-20 flex items-center gap-2 flex-wrap">
+          <div className="mt-8 sm:mt-20 flex items-center gap-2 flex-wrap">
             <button
               disabled={savingPassword}
               className="h-10 px-6 rounded-xl text-white font-semibold flex items-center gap-2 disabled:opacity-60"
@@ -224,7 +224,7 @@ export default function ProfilePage() {
           </div>
         </form>
 
-        <section className="rounded-3xl border p-6" style={{ borderColor: 'var(--line)', color: 'var(--text)', backgroundColor: 'var(--panel)' }}>
+        <section className="rounded-3xl border p-4 sm:p-6" style={{ borderColor: 'var(--line)', color: 'var(--text)', backgroundColor: 'var(--panel)' }}>
           <SectionTitle icon={<BellIcon className="h-5 w-5" />} title="Preferencias de notificación" subtitle="Elige cómo deseas recibir tus notificaciones." />
 
           <ToggleRow icon={<GmailBrandIcon className="h-6 w-6" />} title="Notificaciones por Gmail" subtitle="Recibe actualizaciones y promociones en tu correo." enabled={form.notify_gmail} pending={savingPrefs.notify_gmail} onToggle={() => onTogglePreference('notify_gmail')} />
@@ -248,11 +248,11 @@ export default function ProfilePage() {
 
 function SectionTitle({ icon, title, subtitle }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-start gap-3">
       <span className="h-10 w-10 rounded-full grid place-items-center" style={{ backgroundColor: 'var(--panel-soft)', color: 'var(--brand)' }}>
         {icon}
       </span>
-      <div>
+      <div className="min-w-0">
         <h3 className="text-[34px] leading-none font-extrabold" style={{ color: 'var(--text)' }}>{title}</h3>
         <p style={{ color: 'var(--muted)' }}>{subtitle}</p>
       </div>
@@ -318,15 +318,15 @@ function fitInputIcon(icon) {
 }
 function ToggleRow({ icon, title, subtitle, enabled, pending, onToggle }) {
   return (
-    <div className="rounded-xl border p-3 flex items-center justify-between mt-2" style={{ borderColor: 'var(--line)' }}>
-      <div className="flex items-start gap-3">
+    <div className="rounded-xl border p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-2" style={{ borderColor: 'var(--line)' }}>
+      <div className="flex min-w-0 items-start gap-3">
         <span
           className="grid place-items-center rounded-lg"
           style={{ width: 28, height: 28, backgroundColor: 'var(--panel-soft)', color: 'var(--text)' }}
         >
           {icon}
         </span>
-        <div>
+        <div className="min-w-0">
           <p className="font-semibold text-[24px] leading-7" style={{ color: 'var(--text)' }}>{title}</p>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>{subtitle}</p>
         </div>
@@ -336,7 +336,7 @@ function ToggleRow({ icon, title, subtitle, enabled, pending, onToggle }) {
         onClick={onToggle}
         disabled={pending}
         aria-label={enabled ? 'Desactivar preferencia' : 'Activar preferencia'}
-        className="relative disabled:opacity-60"
+        className="relative disabled:opacity-60 shrink-0"
         style={{
           width: 48,
           height: 28,

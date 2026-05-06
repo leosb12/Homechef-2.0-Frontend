@@ -50,7 +50,7 @@ export default function LoginPage() {
 
   return (
     <section
-      className="relative overflow-hidden min-h-screen px-6 py-6 lg:px-10 lg:py-8"
+      className="relative overflow-hidden min-h-screen px-4 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8"
       style={{
         backgroundColor: 'var(--bg)',
         backgroundImage: isDark
@@ -70,12 +70,12 @@ export default function LoginPage() {
       `}</style>
 
       <div
-        className="flex items-center justify-between mb-8 pb-5 border-b"
+        className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6 sm:mb-8 pb-5 border-b"
         style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
       >
-        <Link to="/" className="inline-flex items-center gap-3">
+        <Link to="/" className="inline-flex min-w-0 items-center gap-3">
           <span
-            className="h-14 w-14 rounded-full grid place-items-center text-white text-2xl font-bold"
+            className="h-11 w-11 sm:h-14 sm:w-14 shrink-0 rounded-full grid place-items-center text-white text-2xl font-bold"
             style={{ background: 'linear-gradient(180deg, var(--brand), var(--brand-2))' }}
           >
             👨‍🍳
@@ -88,7 +88,7 @@ export default function LoginPage() {
         <button
           type="button"
           onClick={toggleTheme}
-          className="h-12 px-4 rounded-xl border flex items-center gap-3"
+          className="h-12 px-4 rounded-xl border flex items-center gap-3 self-end sm:self-auto"
           style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
           title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
         >
@@ -100,7 +100,7 @@ export default function LoginPage() {
 
       <div className="max-w-[1680px] mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_620px] gap-8 lg:gap-12 items-start">
         <div className="pt-2 min-w-0 relative z-10 lg:col-start-1">
-          <div className="inline-flex rounded-full px-4 py-2 text-lg border" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}>
+          <div className="inline-flex max-w-full rounded-full px-4 py-2 text-sm sm:text-lg border" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}>
             ✩ Hecho con amor por chefs como tu
           </div>
 
@@ -110,11 +110,11 @@ export default function LoginPage() {
             <span style={{ color: 'var(--brand-2)' }}>simple, rapido y delicioso.</span>
           </h2>
 
-          <p className="mt-6 text-3xl xl:text-[34px] max-w-3xl leading-relaxed" style={{ color: 'var(--muted)' }}>
+          <p className="mt-4 sm:mt-6 text-3xl xl:text-[34px] max-w-3xl leading-relaxed" style={{ color: 'var(--muted)' }}>
             Conectamos a los mejores chefs y restaurantes contigo. Descubre platos increibles, haz pedidos facilmente y disfruta donde estes.
           </p>
 
-          <ul className="mt-8 space-y-4 text-lg">
+          <ul className="mt-6 sm:mt-8 space-y-4 text-base sm:text-lg">
             <li className="flex gap-4">
               <span className="h-12 w-12 rounded-2xl grid place-items-center" style={{ backgroundColor: 'var(--panel-soft)' }}>🔎</span>
               <p><strong>Explora platos increibles</strong><br /><span style={{ color: 'var(--muted)' }}>Descubre recetas unicas y nuevos favoritos.</span></p>
@@ -131,7 +131,7 @@ export default function LoginPage() {
         </div>
 
         <div
-          className="rounded-[30px] border p-6 lg:p-8 w-full max-w-[620px] justify-self-stretch lg:justify-self-end lg:col-start-2 mt-8 lg:mt-0 relative z-20"
+          className="rounded-[30px] border p-4 sm:p-6 lg:p-8 w-full max-w-[620px] justify-self-stretch lg:justify-self-end lg:col-start-2 mt-4 lg:mt-0 relative z-20"
           style={{
             borderColor: 'var(--line)',
             backgroundColor: isDark ? 'rgba(10,19,45,.74)' : 'rgba(255,255,255,.84)',
@@ -140,7 +140,7 @@ export default function LoginPage() {
         >
           <div className="text-center">
             <div
-              className="mx-auto h-20 w-20 rounded-full grid place-items-center text-white text-3xl mb-4"
+              className="mx-auto h-16 w-16 sm:h-20 sm:w-20 rounded-full grid place-items-center text-white text-3xl mb-4"
               style={{ background: 'linear-gradient(180deg, var(--brand), var(--brand-2))' }}
             >
               👨‍🍳
@@ -195,7 +195,7 @@ export default function LoginPage() {
             </button>
           </form>
 
-          <div className="mt-5 rounded-xl border px-4 py-3 flex items-center justify-between" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+          <div className="mt-5 rounded-xl border px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
             <div>
               <p className="font-semibold text-lg" style={{ color: 'var(--text)' }}>No tienes una cuenta?</p>
               <p className="text-sm" style={{ color: 'var(--muted)' }}>Unete a HomeChef y empieza a disfrutar.</p>
@@ -218,14 +218,14 @@ function Field({ label, value, onChange, type = 'text', placeholder, left, right
   return (
     <label className="block">
       <span className="text-sm" style={{ color: 'var(--muted)' }}>{label}</span>
-      <div className="mt-1 h-14 rounded-xl border flex items-center px-3 gap-2" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
+      <div className="mt-1 h-14 rounded-xl border flex items-center px-3 gap-2 min-w-0" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
         <span style={{ color: 'var(--muted)' }}>{left}</span>
         <input
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="login-input flex-1 bg-transparent outline-none"
+          className="login-input min-w-0 flex-1 bg-transparent outline-none"
           style={{ color: 'var(--text)' }}
           required={required}
         />

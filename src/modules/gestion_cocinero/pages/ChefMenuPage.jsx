@@ -136,7 +136,7 @@ export default function ChefMenuPage() {
 
   return (
     <section className="space-y-4">
-      <header className="flex items-end justify-between gap-3">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Menu del dia</h1>
           <p style={{ color: 'var(--muted)' }}>
@@ -146,7 +146,7 @@ export default function ChefMenuPage() {
         <LoadingButton
           type="button"
           onClick={saveMenu}
-          className="px-4 py-2 rounded-lg text-white font-semibold"
+          className="px-4 py-2 rounded-lg text-white font-semibold self-start sm:self-auto"
           style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
           loading={loadingAction === 'save-menu'}
           loadingLabel="Guardando..."
@@ -199,7 +199,7 @@ export default function ChefMenuPage() {
                       Estado plato: {dish.status}
                     </p>
 
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       {!dish.in_menu ? (
                         <LoadingButton
                           type="button"
@@ -327,7 +327,7 @@ export default function ChefMenuPage() {
             <p className="font-semibold mb-2">Resumen del menu</p>
             <ul className="space-y-1 text-sm">
               {menuItems.map((item) => (
-                <li key={item.dish_id} className="flex items-center justify-between gap-2">
+                <li key={item.dish_id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
                   <span>{item.name}</span>
                   <span style={{ color: 'var(--muted)' }}>
                     {item.portions} porciones · {item.status}

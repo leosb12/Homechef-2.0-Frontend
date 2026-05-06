@@ -222,11 +222,11 @@ export default function ChefProfilePage() {
 
   return (
     <section className="space-y-4">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">Perfil de cocinero</h1>
         <LoadingButton
           type="button"
-          className="px-4 py-2 rounded-lg text-white"
+          className="px-4 py-2 rounded-lg text-white self-start sm:self-auto"
           style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
           onClick={() => {
             setLoadingAction('toggle-general')
@@ -338,9 +338,9 @@ export default function ChefProfilePage() {
       </form>
 
       <section className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="font-semibold text-lg">Ubicacion del cocinero (OpenStreetMap)</h2>
-          <LoadingButton type="button" className="px-3 py-2 rounded-lg border" style={{ borderColor: 'var(--line)' }} onClick={() => {
+          <LoadingButton type="button" className="px-3 py-2 rounded-lg border self-start sm:self-auto" style={{ borderColor: 'var(--line)' }} onClick={() => {
             setLoadingAction('toggle-location')
             setEditingLocation((prev) => !prev)
             window.setTimeout(() => setLoadingAction((current) => (current === 'toggle-location' ? '' : current)), 150)

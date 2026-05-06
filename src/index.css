@@ -41,10 +41,29 @@ body,
   min-height: 100%;
 }
 
+* {
+  box-sizing: border-box;
+}
+
 body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   background: radial-gradient(circle at 80% 0%, rgba(124, 58, 237, 0.15), transparent 35%), var(--bg);
   color: var(--text);
+  overflow-x: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  min-width: 0;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
 }
 
 .filter-select {
@@ -60,4 +79,51 @@ body {
 .filter-select option:checked {
   color: #ffffff;
   background-color: var(--brand);
+}
+
+@media (max-width: 640px) {
+  .text-6xl,
+  .xl\:text-6xl {
+    font-size: 2.25rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .text-5xl {
+    font-size: 2rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .text-4xl {
+    font-size: 1.65rem !important;
+    line-height: 1.18 !important;
+  }
+
+  .text-3xl,
+  .text-\[34px\],
+  .xl\:text-\[34px\],
+  .text-\[32px\],
+  .text-\[30px\] {
+    font-size: 1.35rem !important;
+    line-height: 1.25 !important;
+  }
+
+  .text-2xl {
+    font-size: 1.15rem !important;
+    line-height: 1.35 !important;
+  }
+
+  .rounded-\[30px\],
+  .rounded-3xl {
+    border-radius: 1rem !important;
+  }
+
+  .rounded-\[26px\] {
+    border-radius: 0.95rem !important;
+  }
+
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }

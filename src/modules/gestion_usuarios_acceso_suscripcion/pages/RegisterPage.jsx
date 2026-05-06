@@ -133,7 +133,7 @@ export default function RegisterPage() {
 
   return (
     <section
-      className="relative overflow-hidden min-h-screen px-6 py-6 lg:px-10 lg:py-8"
+      className="relative overflow-hidden min-h-screen px-4 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8"
       style={{
         backgroundColor: 'var(--bg)',
         backgroundImage: isDark
@@ -157,18 +157,18 @@ export default function RegisterPage() {
       `}</style>
 
       <div
-        className="fixed top-0 left-0 right-0 z-50 border-b px-6 py-4 lg:px-10"
+        className="fixed top-0 left-0 right-0 z-50 border-b px-4 py-3 sm:px-6 sm:py-4 lg:px-10"
         style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
       >
-        <div className="max-w-[1680px] mx-auto flex items-center justify-between">
-          <Link to="/" className="inline-flex items-center gap-3">
+        <div className="max-w-[1680px] mx-auto flex items-center justify-between gap-3">
+          <Link to="/" className="inline-flex min-w-0 items-center gap-3">
             <span
-              className="h-14 w-14 rounded-full grid place-items-center text-white text-2xl font-bold"
+              className="h-11 w-11 sm:h-14 sm:w-14 shrink-0 rounded-full grid place-items-center text-white text-2xl font-bold"
               style={{ background: 'linear-gradient(180deg, var(--brand), var(--brand-2))' }}
             >
               👨‍🍳
             </span>
-            <span>
+            <span className="min-w-0">
               <span className="block text-5xl font-extrabold leading-none" style={{ color: 'var(--text)' }}>HomeChef</span>
               <span className="block text-lg mt-1" style={{ color: 'var(--muted)' }}>Cocina local, momentos inolvidables 💜</span>
             </span>
@@ -176,7 +176,7 @@ export default function RegisterPage() {
           <button
             type="button"
             onClick={onToggleTheme}
-            className="h-12 px-4 rounded-xl border flex items-center gap-3"
+          className="h-11 sm:h-12 px-3 sm:px-4 rounded-xl border flex items-center gap-2 sm:gap-3 shrink-0"
             style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
             title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             disabled={themeLoading || buttonLoading === 'theme'}
@@ -194,11 +194,11 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div className="h-28" />
+      <div className="h-24 sm:h-28" />
 
       <div className="max-w-[1680px] mx-auto relative z-10 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_840px] gap-8 lg:gap-6 items-start">
         <div className="pt-2 min-w-0 relative z-10 lg:col-start-1">
-          <div className="inline-flex rounded-full px-4 py-2 text-lg border" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}>
+          <div className="inline-flex max-w-full rounded-full px-4 py-2 text-sm sm:text-lg border" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}>
             💜 Unete a nuestra comunidad
           </div>
 
@@ -208,13 +208,13 @@ export default function RegisterPage() {
             <span style={{ color: 'var(--brand-2)' }}>empieza a disfrutar</span>
           </h2>
 
-          <p className="mt-6 text-3xl xl:text-[34px] max-w-3xl leading-relaxed" style={{ color: 'var(--muted)' }}>
+          <p className="mt-4 sm:mt-6 text-3xl xl:text-[34px] max-w-3xl leading-relaxed" style={{ color: 'var(--muted)' }}>
             Descubre platos increibles, apoya a chefs locales y vive experiencias unicas.
           </p>
         </div>
 
         <div
-          className="rounded-[30px] border p-6 lg:p-8 w-full max-w-[840px] justify-self-stretch lg:justify-self-start lg:col-start-2 lg:-ml-10 mt-8 lg:mt-0 relative z-20"
+          className="rounded-[30px] border p-4 sm:p-6 lg:p-8 w-full max-w-[840px] justify-self-stretch lg:justify-self-start lg:col-start-2 lg:-ml-10 mt-4 lg:mt-0 relative z-20"
           style={{
             borderColor: 'var(--line)',
             backgroundColor: isDark ? 'rgba(10,19,45,.78)' : 'rgba(255,255,255,.9)',
@@ -223,7 +223,7 @@ export default function RegisterPage() {
         >
           <div className="text-center">
             <div
-              className="mx-auto h-20 w-20 rounded-full grid place-items-center text-white text-3xl mb-4"
+              className="mx-auto h-16 w-16 sm:h-20 sm:w-20 rounded-full grid place-items-center text-white text-3xl mb-4"
               style={{ background: 'linear-gradient(180deg, var(--brand), var(--brand-2))' }}
             >
               👤
@@ -258,12 +258,12 @@ export default function RegisterPage() {
                 <Field label="Especialidades" name="chef_specialties" value={form.chef_specialties} onChange={onChange} placeholder="Ej: cocina italiana, postres" left="🍽" required />
 
                 <div className="rounded-xl border p-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-3">
                     <p className="font-semibold" style={{ color: 'var(--text)' }}>Ubicacion en mapa (OpenStreetMap)</p>
                     <button
                       type="button"
                       onClick={onUseCurrentLocation}
-                      className="px-3 py-1.5 rounded-lg text-sm border"
+                    className="px-3 py-1.5 rounded-lg text-sm border w-full sm:w-auto"
                       style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
                       disabled={locationLoading || buttonLoading === 'location'}
                     >
@@ -423,7 +423,7 @@ function Field({ label, name, value, onChange, type = 'text', placeholder, left,
   return (
     <label className="block">
       <span className="text-sm" style={{ color: 'var(--muted)' }}>{label}</span>
-      <div className="mt-1 h-14 rounded-xl border flex items-center px-3 gap-2" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
+      <div className="mt-1 h-14 rounded-xl border flex items-center px-3 gap-2 min-w-0" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
         <span style={{ color: 'var(--muted)' }}>{left}</span>
         <input
           name={name}
@@ -431,7 +431,7 @@ function Field({ label, name, value, onChange, type = 'text', placeholder, left,
           value={value}
           onChange={onChange}
           placeholder={placeholder}
-          className="register-input flex-1 bg-transparent outline-none"
+          className="register-input min-w-0 flex-1 bg-transparent outline-none"
           style={{ color: 'var(--text)' }}
           required={required}
         />

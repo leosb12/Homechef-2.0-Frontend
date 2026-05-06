@@ -143,21 +143,21 @@ export default function DishDetailPage() {
           <img
             src={detail.image_url}
             alt={detail.name}
-            className="w-full h-80 object-cover rounded-2xl border"
+            className="w-full h-64 sm:h-80 object-cover rounded-2xl border"
             style={{ borderColor: 'var(--line)' }}
           />
         ) : (
           <div
-            className="w-full h-80 rounded-2xl border grid place-items-center"
+            className="w-full h-64 sm:h-80 rounded-2xl border grid place-items-center"
             style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
           >
             Sin foto
           </div>
         )}
 
-        <div className="rounded-2xl border p-5 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-          <div className="flex items-start justify-between gap-3">
-            <h1 className="text-4xl font-bold">{detail.name}</h1>
+        <div className="rounded-2xl border p-4 sm:p-5 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <h1 className="text-4xl font-bold break-words">{detail.name}</h1>
             <button
               type="button"
               onClick={onToggleFavorite}
@@ -183,14 +183,14 @@ export default function DishDetailPage() {
           <p>Delivery: {detail.delivery_available ? 'Disponible' : 'No disponible'}</p>
           <p>Reseñas del plato: {Number(detail.dish_reviews?.rating_avg || 0).toFixed(1)} ({detail.dish_reviews?.reviews_count || 0} reseñas)</p>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <input
               type="number"
               min="1"
               max={detail.available_portions || 1}
               value={quantity}
               onChange={(e) => setQuantity(e.target.value)}
-              className="border rounded-lg px-3 py-2 w-24"
+              className="border rounded-lg px-3 py-2 w-full sm:w-24"
               style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
             />
             <button onClick={onAddToCart} className="px-4 py-2 rounded-lg text-white" style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}>
@@ -202,7 +202,7 @@ export default function DishDetailPage() {
       </div>
 
       <section className="rounded-2xl border p-4 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <h2 className="text-2xl font-bold">Cocinero responsable</h2>
           <button
             type="button"
@@ -255,7 +255,7 @@ export default function DishDetailPage() {
       </section>
 
       <div className="rounded-2xl border p-4 space-y-4" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-2xl font-bold">Reseñas del plato</h2>
           <select value={dishReviewSort} onChange={(event) => setDishReviewSort(event.target.value)} className="border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
             <option value="recent">Más recientes</option>
@@ -299,7 +299,7 @@ export default function DishDetailPage() {
       </div>
 
       <div className="rounded-2xl border p-4 space-y-4" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-2xl font-bold">Reseñas del cocinero</h2>
             <p className="text-sm" style={{ color: 'var(--muted)' }}>

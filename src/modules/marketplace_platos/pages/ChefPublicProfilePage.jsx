@@ -101,7 +101,7 @@ export default function ChefPublicProfilePage() {
         Volver a explorar
       </button>
 
-      <header className="rounded-2xl border p-5 flex flex-col gap-4 md:flex-row" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
+      <header className="rounded-2xl border p-4 sm:p-5 flex flex-col gap-4 md:flex-row" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
         <div className="h-36 w-36 rounded-2xl border overflow-hidden shrink-0" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
           {profile.profile_image_url ? (
             <img src={profile.profile_image_url} alt={profile.name} className="h-full w-full object-cover" />
@@ -110,12 +110,12 @@ export default function ChefPublicProfilePage() {
           )}
         </div>
         <div className="space-y-3 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h1 className="text-5xl font-bold">{profile.name}</h1>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="min-w-0">
+              <h1 className="text-5xl font-bold break-words">{profile.name}</h1>
               {profile.full_name && profile.full_name !== profile.name ? <p style={{ color: 'var(--muted)' }}>{profile.full_name}</p> : null}
             </div>
-            <button type="button" onClick={onToggleFavorite} className="px-4 py-2 rounded-xl border font-semibold" style={{ borderColor: 'var(--line)', color: isFavorite ? '#f59e0b' : 'var(--text)' }}>
+            <button type="button" onClick={onToggleFavorite} className="px-4 py-2 rounded-xl border font-semibold self-start sm:self-auto" style={{ borderColor: 'var(--line)', color: isFavorite ? '#f59e0b' : 'var(--text)' }}>
               {isFavorite ? 'Favorito' : 'Guardar cocinero'}
             </button>
           </div>
@@ -172,7 +172,7 @@ export default function ChefPublicProfilePage() {
       </section>
 
       <section className="rounded-2xl border p-4 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 className="text-2xl font-bold">Reseñas del cocinero</h2>
           <select value={sort} onChange={(event) => setSort(event.target.value)} className="border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
             <option value="recent">Más recientes</option>

@@ -8,7 +8,9 @@ import LoadingButton from '../../modules/gestion_cocinero/components/LoadingButt
 export default function RoleLayout({ title, links }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => (
+    typeof window === 'undefined' ? true : window.matchMedia('(min-width: 1024px)').matches
+  ))
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [loadingAction, setLoadingAction] = useState('')
   const user = useAuthSession((state) => state.user)
@@ -38,10 +40,18 @@ export default function RoleLayout({ title, links }) {
     }
   }, [accessToken, role, clearSession, navigate])
 
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 1024px)')
+    const syncSidebar = (event) => setIsSidebarOpen(event.matches)
+    syncSidebar(media)
+    media.addEventListener('change', syncSidebar)
+    return () => media.removeEventListener('change', syncSidebar)
+  }, [])
+
   return (
     <div className="min-h-screen relative" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
       <aside
-        className={`fixed top-0 left-0 h-full w-[270px] border-r p-6 flex flex-col gap-6 z-40 transition-transform duration-300 ${
+        className={`fixed top-0 left-0 h-full w-[min(270px,82vw)] border-r p-4 sm:p-6 flex flex-col gap-5 sm:gap-6 z-40 transition-transform duration-300 ${
           isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
         style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
@@ -50,7 +60,7 @@ export default function RoleLayout({ title, links }) {
           <div className="h-11 w-11 rounded-full grid place-items-center text-white font-bold" style={{ background: 'linear-gradient(180deg, var(--brand), var(--brand-2))' }}>
             🍽️
           </div>
-          <h2 className="font-bold text-3xl">{title}</h2>
+          <h2 className="font-bold text-3xl truncate">{title}</h2>
           <button
             className="ml-auto h-9 w-9 rounded-lg border grid place-items-center"
             style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
@@ -95,8 +105,16 @@ export default function RoleLayout({ title, links }) {
           <p className="text-sm" style={{ color: 'var(--muted)' }}>Descubre nuevos sabores y vive experiencias unicas.</p>
         </div>
       </aside>
+      {isSidebarOpen && (
+        <button
+          type="button"
+          className="fixed inset-0 z-30 bg-black/45 lg:hidden"
+          aria-label="Cerrar menu"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
       <div className={`min-w-0 transition-all duration-300 ${isSidebarOpen ? 'lg:ml-[270px]' : 'ml-0'}`}>
-        <header className="sticky top-0 z-30 h-16 border-b px-6 flex items-center justify-end gap-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
+        <header className="sticky top-0 z-30 min-h-16 border-b px-3 sm:px-6 py-3 flex items-center justify-end gap-2 sm:gap-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
           <button
             className="mr-auto h-10 w-10 rounded-lg border grid place-items-center"
             style={{ borderColor: 'var(--line)', color: 'var(--text)', backgroundColor: 'var(--panel-soft)' }}
@@ -125,7 +143,7 @@ export default function RoleLayout({ title, links }) {
           <LoadingButton
             loading={loadingAction === 'logout'}
             loadingLabel="..."
-            className="px-3 py-2 rounded-lg border transition"
+            className="px-3 py-2 rounded-lg border transition text-sm sm:text-base"
             style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
             onClick={() => flashAction('logout-open', () => setShowLogoutConfirm(true))}
             disabled={loadingAction === 'logout-open'}
@@ -133,7 +151,7 @@ export default function RoleLayout({ title, links }) {
             Cerrar sesion
           </LoadingButton>
         </header>
-        <main className="p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

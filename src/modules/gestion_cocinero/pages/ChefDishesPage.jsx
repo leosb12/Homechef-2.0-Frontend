@@ -242,7 +242,7 @@ export default function ChefDishesPage() {
 
   return (
     <section className="space-y-4">
-      <header className="flex items-end justify-between gap-3">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Mis platos</h1>
           <p style={{ color: 'var(--muted)' }}>Administra los platos que ofreces en HomeChef.</p>
@@ -250,7 +250,7 @@ export default function ChefDishesPage() {
         <LoadingButton
           type="button"
           onClick={onNewDish}
-          className="px-4 py-2 rounded-lg text-white font-semibold"
+          className="px-4 py-2 rounded-lg text-white font-semibold self-start sm:self-auto"
           style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
           loading={loadingAction === 'new-dish'}
           loadingLabel="Cargando..."
@@ -306,7 +306,7 @@ export default function ChefDishesPage() {
                       Bs {Number(dish.price || 0).toFixed(2)} · {dish.portions || 0} porciones
                     </p>
                     <p className="text-sm mt-1">{STATUS_LABELS[dish.status] || dish.status}</p>
-                    <div className="flex gap-2 mt-2">
+                    <div className="flex flex-wrap gap-2 mt-2">
                       <LoadingButton
                         type="button"
                         className="px-2 py-1 text-xs rounded border"
@@ -440,7 +440,7 @@ export default function ChefDishesPage() {
                 ))}
               </select>
             </label>
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className="flex flex-wrap justify-start sm:justify-end gap-2">
               <LoadingButton
                 type="button"
                 className="px-4 py-2 rounded-lg border"

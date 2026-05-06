@@ -219,7 +219,7 @@ export default function ChefAvailabilityPage() {
                   {slots.length ? (
                     <div className="mt-3 grid gap-2">
                       {slots.map((slot) => (
-                        <div key={slot.index} className="grid gap-2 rounded-lg border p-3 lg:grid-cols-[80px_150px_150px_minmax(0,1fr)_auto]" style={{ borderColor: 'var(--line)' }}>
+                        <div key={slot.index} className="grid gap-2 rounded-lg border p-3 sm:grid-cols-2 lg:grid-cols-[80px_150px_150px_minmax(0,1fr)_auto]" style={{ borderColor: 'var(--line)' }}>
                           <label className="flex items-center gap-2 text-sm">
                             <input
                               type="checkbox"
@@ -242,7 +242,7 @@ export default function ChefAvailabilityPage() {
                             className="border rounded-lg px-3 py-2"
                             style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
                           />
-                          <div className="flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2 sm:col-span-2 lg:col-span-1">
                             <ModeToggle
                               label="Delivery"
                               disabled={!form.accept_delivery}

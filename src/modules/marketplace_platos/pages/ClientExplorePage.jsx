@@ -193,7 +193,7 @@ export default function ClientExplorePage() {
 
   return (
     <section className="space-y-6">
-      <header className="relative overflow-hidden rounded-3xl border p-6 lg:p-8 min-h-[220px]" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
+      <header className="relative overflow-hidden rounded-3xl border p-4 sm:p-6 lg:p-8 min-h-[180px] sm:min-h-[220px]" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
         <div className="absolute right-4 top-1/2 -translate-y-1/2 h-[190px] w-[42%] hidden lg:block pointer-events-none">
           <img
             src={heroImage}
@@ -217,16 +217,16 @@ export default function ClientExplorePage() {
 
       <form
         onSubmit={onApplyFilters}
-        className="border rounded-2xl p-4 lg:p-5 grid gap-3 sm:grid-cols-4 lg:grid-cols-5 shadow-sm"
+        className="border rounded-2xl p-4 lg:p-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5 shadow-sm"
         style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
       >
-        <div className="sm:col-span-2 lg:col-span-2 border rounded-xl px-3 py-2 flex items-center gap-2" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+        <div className="sm:col-span-2 lg:col-span-2 border rounded-xl px-3 py-2 flex items-center gap-2 min-w-0" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
           <span style={{ color: 'var(--muted)' }}>🔍</span>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Buscar un plato delicioso..."
-            className="w-full bg-transparent outline-none"
+            className="w-full min-w-0 bg-transparent outline-none"
           />
         </div>
         <select value={featured} onChange={(e) => setFeatured(e.target.value)} className="filter-select border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)' }}>
@@ -297,7 +297,7 @@ export default function ClientExplorePage() {
 
       {!loading && !error && dishes.length > 0 && (
         <>
-          <div className="flex items-end justify-between">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-4xl font-bold">⭐ Platos destacados</h2>
               <p style={{ color: 'var(--muted)' }}>Seleccionados especialmente para ti</p>

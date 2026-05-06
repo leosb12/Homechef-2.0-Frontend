@@ -145,7 +145,7 @@ export default function FavoritesPage() {
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 items-start">
         <article className="lg:col-span-2 rounded-2xl border p-4 md:p-5 space-y-5" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-3xl font-bold">Favoritos</h2>
               <p style={{ color: 'var(--muted)' }}>Tus platos y cocineros guardados.</p>
@@ -153,7 +153,7 @@ export default function FavoritesPage() {
             <button
               type="button"
               onClick={() => navigate('/client/explore')}
-              className="px-4 py-2 rounded-xl border text-lg font-semibold"
+              className="px-4 py-2 rounded-xl border text-lg font-semibold self-start sm:self-auto"
               style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}
             >
               Explorar
@@ -259,7 +259,7 @@ function FavoriteCard({ item, onRemove, onOpen }) {
   const image = target.image_url || target.profile_image_url
 
   return (
-    <div className="rounded-2xl border p-3 md:p-4 flex gap-3 items-center" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
+    <div className="rounded-2xl border p-3 md:p-4 flex flex-col gap-3 sm:flex-row sm:items-center" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
       <div className="h-24 w-24 rounded-2xl overflow-hidden border grid place-items-center shrink-0" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
         {image ? <img src={image} alt={target.name || 'Favorito'} className="h-full w-full object-cover" /> : <span style={{ color: 'var(--muted)' }}>Sin foto</span>}
       </div>
@@ -283,7 +283,7 @@ function FavoriteCard({ item, onRemove, onOpen }) {
           Guardado el {item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}
         </p>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex w-full flex-row gap-2 sm:w-auto sm:flex-col">
         {onOpen ? (
           <button type="button" onClick={onOpen} className="px-3 py-2 rounded-xl border font-semibold" style={{ borderColor: 'var(--line)' }}>
             Ver

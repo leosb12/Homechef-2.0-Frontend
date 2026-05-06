@@ -49,9 +49,9 @@ export default function PublicLayout() {
     <div className="min-h-screen" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
       {!isAuthScreen && (
         <header className="border-b" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-          <div className="mx-auto max-w-6xl px-4 py-4 flex items-center justify-between">
+          <div className="mx-auto max-w-6xl px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Link to="/" className="text-xl font-bold">HomeChef</Link>
-            <nav className="flex items-center gap-2">
+            <nav className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
               <button
                 aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                 title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
@@ -65,7 +65,7 @@ export default function PublicLayout() {
               {isAuthenticated ? (
                 <button
                   type="button"
-                  className="px-3 py-2 rounded-md border"
+                  className="px-3 py-2 rounded-md border text-sm sm:text-base"
                   style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
                   onClick={handleLogout}
                 >
@@ -73,10 +73,10 @@ export default function PublicLayout() {
                 </button>
               ) : (
                 <>
-                  <Link to="/login" className="px-3 py-2 rounded-md border" style={{ borderColor: 'var(--line)', color: 'var(--text)' }}>
+                  <Link to="/login" className="px-3 py-2 rounded-md border text-sm sm:text-base" style={{ borderColor: 'var(--line)', color: 'var(--text)' }}>
                     Iniciar sesion
                   </Link>
-                  <Link to="/register" className="px-3 py-2 rounded-md text-white" style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}>
+                  <Link to="/register" className="px-3 py-2 rounded-md text-white text-sm sm:text-base" style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}>
                     Registrarse
                   </Link>
                 </>

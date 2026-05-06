@@ -28,10 +28,10 @@ export default function PublicDishCard({ dish, onRestrictedAction, onViewDetail,
         </button>
       </div>
       <div className="p-4 space-y-2">
-        <div className="flex items-center justify-between gap-3">
-          <button className="font-semibold text-3xl leading-tight text-left" onClick={() => onViewDetail?.(dish.id)}>{dish.name}</button>
+        <div className="flex items-start justify-between gap-3">
+          <button className="min-w-0 font-semibold text-3xl leading-tight text-left break-words" onClick={() => onViewDetail?.(dish.id)}>{dish.name}</button>
           {dish.is_featured && (
-            <span className="text-xs px-2 py-1 rounded-md" style={{ backgroundColor: '#fde68a', color: '#1f2937' }}>
+            <span className="shrink-0 text-xs px-2 py-1 rounded-md" style={{ backgroundColor: '#fde68a', color: '#1f2937' }}>
               Destacado
             </span>
           )}
