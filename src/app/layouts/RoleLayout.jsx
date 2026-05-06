@@ -3,12 +3,14 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { logoutUser } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_service'
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 import { useThemeSession } from '../../shared/services/theme_session'
+import LoadingButton from '../../modules/gestion_cocinero/components/LoadingButton'
 
 export default function RoleLayout({ title, links }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
+  const [loadingAction, setLoadingAction] = useState('')
   const user = useAuthSession((state) => state.user)
   const accessToken = useAuthSession((state) => state.accessToken)
   const role = useAuthSession((state) => state.role)
@@ -16,15 +18,17 @@ export default function RoleLayout({ title, links }) {
   const theme = useThemeSession((state) => state.theme)
   const toggleTheme = useThemeSession((state) => state.toggleTheme)
 
-  const handleLogout = async () => {
-    try {
-      await logoutUser()
-    } catch {
-      // Si el token expiro igual limpiamos sesion local.
-    } finally {
-      clearSession()
-      navigate('/login')
-    }
+  const handleLogout = () => {
+    const token = accessToken
+    clearSession()
+    navigate('/login', { replace: true })
+    void logoutUser(token).catch(() => {})
+  }
+
+  const flashAction = (action, fn) => {
+    setLoadingAction(action)
+    fn()
+    window.setTimeout(() => setLoadingAction((current) => (current === action ? '' : current)), 150)
   }
 
   useEffect(() => {
@@ -50,11 +54,12 @@ export default function RoleLayout({ title, links }) {
           <button
             className="ml-auto h-9 w-9 rounded-lg border grid place-items-center"
             style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
-            onClick={() => setIsSidebarOpen(false)}
+            onClick={() => flashAction('close-sidebar', () => setIsSidebarOpen(false))}
             aria-label="Cerrar menu"
             title="Cerrar menu"
+            disabled={loadingAction === 'close-sidebar'}
           >
-            ✕
+            {loadingAction === 'close-sidebar' ? '...' : '✕'}
           </button>
         </div>
         <nav className="space-y-2">
@@ -95,11 +100,12 @@ export default function RoleLayout({ title, links }) {
           <button
             className="mr-auto h-10 w-10 rounded-lg border grid place-items-center"
             style={{ borderColor: 'var(--line)', color: 'var(--text)', backgroundColor: 'var(--panel-soft)' }}
-            onClick={() => setIsSidebarOpen((prev) => !prev)}
+            onClick={() => flashAction('toggle-sidebar', () => setIsSidebarOpen((prev) => !prev))}
             aria-label="Alternar menu"
             title="Alternar menu"
+            disabled={loadingAction === 'toggle-sidebar'}
           >
-            ☰
+            {loadingAction === 'toggle-sidebar' ? '...' : '☰'}
           </button>
           {user?.first_name && (
             <span className="text-sm" style={{ color: 'var(--muted)' }}>
@@ -111,17 +117,21 @@ export default function RoleLayout({ title, links }) {
             title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             className="h-10 w-10 rounded-full border grid place-items-center text-lg transition"
             style={{ borderColor: 'var(--line)', color: 'var(--text)', backgroundColor: 'var(--panel-soft)' }}
-            onClick={toggleTheme}
+            onClick={() => flashAction('theme', toggleTheme)}
+            disabled={loadingAction === 'theme'}
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {loadingAction === 'theme' ? '...' : theme === 'dark' ? '☀️' : '🌙'}
           </button>
-          <button
+          <LoadingButton
+            loading={loadingAction === 'logout'}
+            loadingLabel="..."
             className="px-3 py-2 rounded-lg border transition"
             style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
-            onClick={() => setShowLogoutConfirm(true)}
+            onClick={() => flashAction('logout-open', () => setShowLogoutConfirm(true))}
+            disabled={loadingAction === 'logout-open'}
           >
             Cerrar sesion
-          </button>
+          </LoadingButton>
         </header>
         <main className="p-6 lg:p-8">
           <Outlet />
@@ -138,21 +148,26 @@ export default function RoleLayout({ title, links }) {
                 type="button"
                 className="px-4 py-2 rounded-lg border"
                 style={{ borderColor: 'var(--line)' }}
-                onClick={() => setShowLogoutConfirm(false)}
+                onClick={() => flashAction('logout-cancel', () => setShowLogoutConfirm(false))}
+                disabled={loadingAction === 'logout-cancel'}
               >
-                Cancelar
+                {loadingAction === 'logout-cancel' ? '...' : 'Cancelar'}
               </button>
-              <button
+              <LoadingButton
                 type="button"
                 className="px-4 py-2 rounded-lg text-white font-semibold"
                 style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
-                onClick={async () => {
+                loading={loadingAction === 'logout-confirm'}
+                loadingLabel="Cerrando..."
+                onClick={() => {
+                  setLoadingAction('logout-confirm')
                   setShowLogoutConfirm(false)
-                  await handleLogout()
+                  handleLogout()
+                  window.setTimeout(() => setLoadingAction((current) => (current === 'logout-confirm' ? '' : current)), 150)
                 }}
               >
                 Cerrar sesion
-              </button>
+              </LoadingButton>
             </div>
           </div>
         </div>

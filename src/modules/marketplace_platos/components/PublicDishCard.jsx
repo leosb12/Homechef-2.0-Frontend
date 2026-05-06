@@ -2,11 +2,17 @@ export default function PublicDishCard({ dish, onRestrictedAction, onViewDetail,
   return (
     <article className="rounded-2xl border overflow-hidden" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
       <div className="relative">
-        <img
-          src={dish.image_url}
-          alt={dish.name}
-          className="h-40 w-full object-cover"
-        />
+        {dish.image_url ? (
+          <img
+            src={dish.image_url}
+            alt={dish.name}
+            className="h-40 w-full object-cover"
+          />
+        ) : (
+          <div className="h-40 w-full grid place-items-center text-sm" style={{ backgroundColor: 'var(--panel-soft)', color: 'var(--muted)' }}>
+            Sin foto
+          </div>
+        )}
         <button
           type="button"
           onClick={() => (onToggleFavorite ? onToggleFavorite(dish.id) : onRestrictedAction('guardar en favoritos'))}
@@ -31,7 +37,7 @@ export default function PublicDishCard({ dish, onRestrictedAction, onViewDetail,
           )}
         </div>
         <p className="text-sm" style={{ color: 'var(--muted)' }}>{dish.chef_name}</p>
-        {typeof dish.distance_km !== 'undefined' && (
+        {typeof dish.distance_km === 'number' && (
           <p className="text-xs" style={{ color: 'var(--muted)' }}>
             Distancia aprox: {Number(dish.distance_km).toFixed(1)} km · Rating: {Number(dish.rating || 0).toFixed(1)}
           </p>

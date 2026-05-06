@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { loginUser } from '../services/auth_service'
 import { useAuthSession } from '../services/auth_session'
@@ -7,10 +8,24 @@ import { useThemeSession } from '../../../shared/services/theme_session'
 export default function LoginPage() {
   const navigate = useNavigate()
   const setSession = useAuthSession((state) => state.setSession)
+  const accessToken = useAuthSession((state) => state.accessToken)
+  const role = useAuthSession((state) => state.role)
   const theme = useThemeSession((state) => state.theme)
   const toggleTheme = useThemeSession((state) => state.toggleTheme)
   const isDark = theme === 'dark'
 
+  useEffect(() => {
+    if (accessToken && role) {
+      const redirects = {
+        CLIENTE: '/client/explore',
+        COCINERO: '/chef/dashboard',
+        ADMINISTRADOR: '/admin/dashboard',
+        REPARTIDOR: '/delivery/assigned',
+      }
+      navigate(redirects[role] || '/', { replace: true })
+    }
+  }, [accessToken, role, navigate])
+  
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [remember, setRemember] = useState(true)
@@ -25,9 +40,9 @@ export default function LoginPage() {
     try {
       const response = await loginUser({ email, password })
       setSession(response)
-      navigate(response.redirect_path || '/')
+      navigate(response.redirect_path || '/', { replace: true })
     } catch (err) {
-      setError(err?.response?.data?.detail || 'Credenciales no validas.')
+      setError(err?.response?.data?.detail || err?.message || 'Credenciales no validas.')
     } finally {
       setSubmitting(false)
     }

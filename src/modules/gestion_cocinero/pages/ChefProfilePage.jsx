@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
+import { uploadFile } from '../../../shared/services/uploads'
 import { changePassword } from '../../gestion_usuarios_acceso_suscripcion/services/auth_service'
 import { fetchChefProfile, saveChefLocation, saveChefProfile } from '../services/chef_service'
+import LoadingButton from '../components/LoadingButton'
 
 const SANTA_CRUZ = { lat: -17.7833, lng: -63.1821 }
 
@@ -43,8 +45,11 @@ export default function ChefProfilePage() {
   const [editingGeneral, setEditingGeneral] = useState(false)
   const [editingLocation, setEditingLocation] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [uploadingImage, setUploadingImage] = useState(false)
   const [message, setMessage] = useState('')
   const [isError, setIsError] = useState(false)
+  const [noticeContext, setNoticeContext] = useState('')
+  const [loadingAction, setLoadingAction] = useState('')
   const fileInputRef = useRef(null)
 
   const isGeneralDirty = useMemo(
@@ -80,20 +85,27 @@ export default function ChefProfilePage() {
       .finally(() => setLoading(false))
   }, [])
 
-  const setNotice = (text, error = false) => {
+  const setNotice = (text, error = false, context = '') => {
     setIsError(error)
     setMessage(text)
+    setNoticeContext(context)
   }
 
-  const onPickImage = (event) => {
+  const onPickImage = async (event) => {
     if (!editingGeneral) return
     const file = event.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      setGeneral((prev) => ({ ...prev, profile_image_url: String(reader.result || '') }))
+    setUploadingImage(true)
+    try {
+      const uploaded = await uploadFile(file, 'chef-profile')
+      setGeneral((prev) => ({ ...prev, profile_image_url: uploaded.public_url || uploaded.file_path }))
+      setNotice('Imagen subida correctamente.')
+    } catch (err) {
+      setNotice(err?.response?.data?.detail || err?.message || 'No se pudo subir la imagen.', true)
+    } finally {
+      setUploadingImage(false)
+      event.target.value = ''
     }
-    reader.readAsDataURL(file)
   }
 
   const removeImage = () => {
@@ -103,6 +115,8 @@ export default function ChefProfilePage() {
 
   const saveGeneral = async (event) => {
     event.preventDefault()
+    setNotice('', false, 'general')
+    setLoadingAction('save-general')
     const payload = {
       first_name: general.first_name,
       last_name: general.last_name,
@@ -120,14 +134,17 @@ export default function ChefProfilePage() {
       setGeneral(normalized)
       setGeneralBase(normalized)
       setEditingGeneral(false)
-      setNotice('Perfil actualizado correctamente.')
+      setNotice('Perfil actualizado correctamente.', false, 'general')
     } catch (err) {
-      setNotice(err?.response?.data?.detail || 'No se pudo guardar los cambios del perfil.', true)
+      setNotice(err?.response?.data?.detail || 'No se pudo guardar los cambios del perfil.', true, 'general')
+    } finally {
+      setLoadingAction((current) => (current === 'save-general' ? '' : current))
     }
   }
 
   const handleChangePassword = async (event) => {
     event.preventDefault()
+    setLoadingAction('change-password')
     try {
       await changePassword(passwordForm)
       setPasswordForm({
@@ -137,7 +154,9 @@ export default function ChefProfilePage() {
       })
       setNotice('Contrasena actualizada correctamente.')
     } catch (err) {
-      setNotice(err?.response?.data?.detail || 'No se pudo cambiar la contrasena.', true)
+      setNotice(err?.response?.data?.detail || err?.message || 'No se pudo cambiar la contrasena.', true)
+    } finally {
+      setLoadingAction((current) => (current === 'change-password' ? '' : current))
     }
   }
 
@@ -152,8 +171,10 @@ export default function ChefProfilePage() {
 
   const useCurrentLocation = () => {
     if (!editingLocation) return
+    setLoadingAction('use-location')
     if (!navigator.geolocation) {
       setNotice('Tu navegador no soporta geolocalizacion.', true)
+      setLoadingAction('')
       return
     }
     navigator.geolocation.getCurrentPosition(
@@ -163,13 +184,18 @@ export default function ChefProfilePage() {
           latitude: Number(pos.coords.latitude.toFixed(6)),
           longitude: Number(pos.coords.longitude.toFixed(6)),
         }))
+        setLoadingAction('')
       },
-      () => setNotice('No se pudo obtener tu ubicacion actual.', true),
+      () => {
+        setNotice('No se pudo obtener tu ubicacion actual.', true)
+        setLoadingAction('')
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     )
   }
 
   const saveLocation = async () => {
+    setLoadingAction('save-location')
     try {
       const saved = await saveChefLocation({
         latitude: Number(location.latitude),
@@ -187,6 +213,8 @@ export default function ChefProfilePage() {
       setNotice('Ubicacion guardada correctamente.')
     } catch (err) {
       setNotice(err?.response?.data?.detail || 'No se pudo guardar la ubicacion.', true)
+    } finally {
+      setLoadingAction((current) => (current === 'save-location' ? '' : current))
     }
   }
 
@@ -196,14 +224,20 @@ export default function ChefProfilePage() {
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-3xl font-bold">Perfil de cocinero</h1>
-        <button
+        <LoadingButton
           type="button"
           className="px-4 py-2 rounded-lg text-white"
           style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
-          onClick={() => setEditingGeneral((prev) => !prev)}
+          onClick={() => {
+            setLoadingAction('toggle-general')
+            setEditingGeneral((prev) => !prev)
+            window.setTimeout(() => setLoadingAction((current) => (current === 'toggle-general' ? '' : current)), 150)
+          }}
+          loading={loadingAction === 'toggle-general'}
+          loadingLabel="..."
         >
           {editingGeneral ? 'Cancelar edicion' : 'Editar perfil'}
-        </button>
+        </LoadingButton>
       </div>
 
       <form className="rounded-xl border p-4 space-y-4" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }} onSubmit={saveGeneral}>
@@ -233,15 +267,17 @@ export default function ChefProfilePage() {
               <InputField type="password" label="Contrasena actual" value={passwordForm.current_password} disabled={false} onChange={(v) => setPasswordForm((prev) => ({ ...prev, current_password: v }))} />
               <InputField type="password" label="Nueva contrasena" value={passwordForm.new_password} disabled={false} onChange={(v) => setPasswordForm((prev) => ({ ...prev, new_password: v }))} />
               <InputField type="password" label="Confirmar nueva contrasena" value={passwordForm.new_password_confirm} disabled={false} onChange={(v) => setPasswordForm((prev) => ({ ...prev, new_password_confirm: v }))} />
-              <button
+              <LoadingButton
                 type="button"
                 disabled={!canChangePassword}
                 onClick={handleChangePassword}
                 className="px-4 py-2 rounded-lg text-white disabled:opacity-50"
                 style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
+                loading={loadingAction === 'change-password'}
+                loadingLabel="Cambiando..."
               >
                 Cambiar contrasena
-              </button>
+              </LoadingButton>
             </div>
           </div>
 
@@ -256,27 +292,47 @@ export default function ChefProfilePage() {
                 )}
               </div>
               <div className="flex gap-2">
-                <button
+                <LoadingButton
                   type="button"
-                  disabled={!editingGeneral}
+                  disabled={!editingGeneral || uploadingImage}
                   onClick={() => fileInputRef.current?.click()}
                   className="flex-1 text-center px-3 py-2 rounded-lg border disabled:opacity-60"
                   style={{ borderColor: 'var(--line)' }}
+                  loading={uploadingImage}
+                  loadingLabel="Subiendo..."
                 >
                   Subir foto
-                </button>
+                </LoadingButton>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" disabled={!editingGeneral} onChange={onPickImage} />
-                <button type="button" disabled={!editingGeneral} onClick={removeImage} className="px-3 py-2 rounded-lg border disabled:opacity-60" style={{ borderColor: 'var(--line)' }} aria-label="Quitar foto">
+                <LoadingButton
+                  type="button"
+                  disabled={!editingGeneral}
+                  onClick={() => {
+                    setLoadingAction('remove-image')
+                    removeImage()
+                    window.setTimeout(() => setLoadingAction((current) => (current === 'remove-image' ? '' : current)), 150)
+                  }}
+                  className="px-3 py-2 rounded-lg border disabled:opacity-60"
+                  style={{ borderColor: 'var(--line)' }}
+                  aria-label="Quitar foto"
+                  loading={loadingAction === 'remove-image'}
+                  loadingLabel="..."
+                >
                   🗑
-                </button>
+                </LoadingButton>
               </div>
             </div>
 
             <div className="flex justify-end pt-1">
-              <button disabled={!editingGeneral || !isGeneralDirty} className="px-4 py-2 rounded-lg text-white disabled:opacity-50" style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}>
+              <LoadingButton type="submit" disabled={!editingGeneral || !isGeneralDirty} className="px-4 py-2 rounded-lg text-white disabled:opacity-50" style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }} loading={loadingAction === 'save-general'} loadingLabel="Guardando...">
                 Guardar cambios
-              </button>
+              </LoadingButton>
             </div>
+            {message && noticeContext === 'general' && (
+              <p className={isError ? 'text-red-500 text-right' : 'text-emerald-500 text-right'} aria-live="polite">
+                {message}
+              </p>
+            )}
           </div>
         </div>
       </form>
@@ -284,9 +340,13 @@ export default function ChefProfilePage() {
       <section className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
         <div className="flex items-center justify-between gap-2">
           <h2 className="font-semibold text-lg">Ubicacion del cocinero (OpenStreetMap)</h2>
-          <button type="button" className="px-3 py-2 rounded-lg border" style={{ borderColor: 'var(--line)' }} onClick={() => setEditingLocation((prev) => !prev)}>
+          <LoadingButton type="button" className="px-3 py-2 rounded-lg border" style={{ borderColor: 'var(--line)' }} onClick={() => {
+            setLoadingAction('toggle-location')
+            setEditingLocation((prev) => !prev)
+            window.setTimeout(() => setLoadingAction((current) => (current === 'toggle-location' ? '' : current)), 150)
+          }} loading={loadingAction === 'toggle-location'} loadingLabel="...">
             {editingLocation ? 'Cancelar ubicacion' : 'Editar ubicacion'}
-          </button>
+          </LoadingButton>
         </div>
 
         <MapPicker latitude={location.latitude} longitude={location.longitude} editable={editingLocation} onChange={onMapChange} />
@@ -303,16 +363,16 @@ export default function ChefProfilePage() {
         <InputField label="Direccion" value={location.address} disabled={!editingLocation} onChange={(v) => setLocation({ ...location, address: v })} placeholder="Direccion o referencia" />
 
         <div className="flex flex-wrap gap-2">
-          <button type="button" disabled={!editingLocation} onClick={useCurrentLocation} className="px-4 py-2 rounded-lg border disabled:opacity-60" style={{ borderColor: 'var(--line)' }}>
+          <LoadingButton type="button" disabled={!editingLocation} onClick={useCurrentLocation} className="px-4 py-2 rounded-lg border disabled:opacity-60" style={{ borderColor: 'var(--line)' }} loading={loadingAction === 'use-location'} loadingLabel="Buscando...">
             Usar ubicacion actual
-          </button>
-          <button type="button" disabled={!editingLocation || !isLocationDirty} onClick={saveLocation} className="px-4 py-2 rounded-lg text-white disabled:opacity-50" style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}>
+          </LoadingButton>
+          <LoadingButton type="button" disabled={!editingLocation || !isLocationDirty} onClick={saveLocation} className="px-4 py-2 rounded-lg text-white disabled:opacity-50" style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }} loading={loadingAction === 'save-location'} loadingLabel="Guardando...">
             Guardar ubicacion
-          </button>
+          </LoadingButton>
         </div>
       </section>
 
-      {message && <p className={isError ? 'text-red-500' : 'text-emerald-500'}>{message}</p>}
+      {message && noticeContext !== 'general' && <p className={isError ? 'text-red-500' : 'text-emerald-500'}>{message}</p>}
     </section>
   )
 }

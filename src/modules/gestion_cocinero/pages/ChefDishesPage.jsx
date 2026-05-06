@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { uploadFile } from '../../../shared/services/uploads'
 import { createChefDish, deleteChefDish, fetchChefDishes, updateChefDish } from '../services/chef_service'
+import LoadingButton from '../components/LoadingButton'
 
 const ALERGENOS = [
   'GLUTEN', 'LACTEOS', 'HUEVO', 'MANI', 'FRUTOS_SECOS', 'SOYA', 'PESCADO', 'MARISCOS',
@@ -76,6 +78,8 @@ export default function ChefDishesPage() {
   const [form, setForm] = useState(emptyForm())
   const [message, setMessage] = useState('')
   const [isError, setIsError] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [loadingAction, setLoadingAction] = useState('')
   const fileInputRef = useRef(null)
 
   const load = async () => {
@@ -130,23 +134,33 @@ export default function ChefDishesPage() {
   }
 
   const onNewDish = () => {
+    setLoadingAction('new-dish')
     setSelectedId('')
     setForm(emptyForm())
+    window.setTimeout(() => setLoadingAction((current) => (current === 'new-dish' ? '' : current)), 150)
   }
 
   const onSelectDish = (dish) => {
+    setLoadingAction(`select-${dish._id}`)
     setSelectedId(dish._id)
     setForm(normalizeDish(dish))
+    window.setTimeout(() => setLoadingAction((current) => (current === `select-${dish._id}` ? '' : current)), 150)
   }
 
-  const onPickImage = (event) => {
+  const onPickImage = async (event) => {
     const file = event.target.files?.[0]
     if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      setForm((prev) => ({ ...prev, image_url: String(reader.result || '') }))
+    setUploadingImage(true)
+    try {
+      const uploaded = await uploadFile(file, 'dish')
+      setForm((prev) => ({ ...prev, image_url: uploaded.public_url || uploaded.file_path }))
+      setNotice('Imagen subida correctamente.')
+    } catch (err) {
+      setNotice(err?.response?.data?.detail || err?.message || 'No se pudo subir la imagen.', true)
+    } finally {
+      setUploadingImage(false)
+      event.target.value = ''
     }
-    reader.readAsDataURL(file)
   }
 
   const onRemoveImage = () => {
@@ -162,6 +176,7 @@ export default function ChefDishesPage() {
   }
 
   const saveDish = async ({ publish }) => {
+    setLoadingAction(publish ? 'publish-dish' : 'draft-dish')
     try {
       const payload = {
         name: form.name.trim(),
@@ -188,20 +203,26 @@ export default function ChefDishesPage() {
       if (!selectedId) setForm(emptyForm())
     } catch (err) {
       setNotice(err?.response?.data?.detail || 'No se pudo guardar el plato.', true)
+    } finally {
+      setLoadingAction((current) => (current === 'publish-dish' || current === 'draft-dish' ? '' : current))
     }
   }
 
   const setDishStatus = async (dishId, status) => {
+    setLoadingAction(`status-${dishId}`)
     try {
       await updateChefDish(dishId, { status })
       setNotice('Estado del plato actualizado.')
       await load()
     } catch (err) {
       setNotice(err?.response?.data?.detail || 'No se pudo actualizar estado.', true)
+    } finally {
+      setLoadingAction((current) => (current === `status-${dishId}` ? '' : current))
     }
   }
 
   const removeDish = async (dishId) => {
+    setLoadingAction(`remove-${dishId}`)
     try {
       await deleteChefDish(dishId)
       if (selectedId === dishId) {
@@ -212,6 +233,8 @@ export default function ChefDishesPage() {
       await load()
     } catch (err) {
       setNotice(err?.response?.data?.detail || 'No se pudo eliminar plato.', true)
+    } finally {
+      setLoadingAction((current) => (current === `remove-${dishId}` ? '' : current))
     }
   }
 
@@ -224,14 +247,16 @@ export default function ChefDishesPage() {
           <h1 className="text-3xl font-bold">Mis platos</h1>
           <p style={{ color: 'var(--muted)' }}>Administra los platos que ofreces en HomeChef.</p>
         </div>
-        <button
+        <LoadingButton
           type="button"
           onClick={onNewDish}
           className="px-4 py-2 rounded-lg text-white font-semibold"
           style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
+          loading={loadingAction === 'new-dish'}
+          loadingLabel="Cargando..."
         >
           + Nuevo plato
-        </button>
+        </LoadingButton>
       </header>
 
       <div className="grid grid-cols-1 gap-4 min-[1024px]:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)] items-start">
@@ -282,7 +307,7 @@ export default function ChefDishesPage() {
                     </p>
                     <p className="text-sm mt-1">{STATUS_LABELS[dish.status] || dish.status}</p>
                     <div className="flex gap-2 mt-2">
-                      <button
+                      <LoadingButton
                         type="button"
                         className="px-2 py-1 text-xs rounded border"
                         style={{ borderColor: 'var(--line)' }}
@@ -290,10 +315,12 @@ export default function ChefDishesPage() {
                           e.stopPropagation()
                           setDishStatus(dish._id, dish.status === 'paused' ? 'published' : 'paused')
                         }}
+                        loading={loadingAction === `status-${dish._id}`}
+                        loadingLabel="..."
                       >
                         {dish.status === 'paused' ? 'Reactivar' : 'Pausar'}
-                      </button>
-                      <button
+                      </LoadingButton>
+                      <LoadingButton
                         type="button"
                         className="px-2 py-1 text-xs rounded border"
                         style={{ borderColor: 'var(--line)' }}
@@ -301,9 +328,11 @@ export default function ChefDishesPage() {
                           e.stopPropagation()
                           removeDish(dish._id)
                         }}
+                        loading={loadingAction === `remove-${dish._id}`}
+                        loadingLabel="..."
                       >
                         Eliminar
-                      </button>
+                      </LoadingButton>
                     </div>
                   </div>
                 </div>
@@ -334,18 +363,33 @@ export default function ChefDishesPage() {
                 )}
               </div>
               <div className="flex gap-2">
-                <button
+                <LoadingButton
                   type="button"
                   className="flex-1 h-11 rounded-lg border"
                   style={{ borderColor: 'var(--line)' }}
+                  disabled={uploadingImage}
                   onClick={() => fileInputRef.current?.click()}
+                  loading={uploadingImage}
+                  loadingLabel="Subiendo..."
                 >
                   Subir foto
-                </button>
+                </LoadingButton>
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
-                <button type="button" className="w-11 rounded-lg border" style={{ borderColor: 'var(--line)' }} onClick={onRemoveImage} title="Quitar foto">
+                <LoadingButton
+                  type="button"
+                  className="w-11 rounded-lg border"
+                  style={{ borderColor: 'var(--line)' }}
+                  onClick={() => {
+                    setLoadingAction('remove-image')
+                    onRemoveImage()
+                    window.setTimeout(() => setLoadingAction((current) => (current === 'remove-image' ? '' : current)), 150)
+                  }}
+                  title="Quitar foto"
+                  loading={loadingAction === 'remove-image'}
+                  loadingLabel="..."
+                >
                   🗑
-                </button>
+                </LoadingButton>
               </div>
             </div>
 
@@ -397,22 +441,26 @@ export default function ChefDishesPage() {
               </select>
             </label>
             <div className="flex flex-wrap justify-end gap-2">
-              <button
+              <LoadingButton
                 type="button"
                 className="px-4 py-2 rounded-lg border"
                 style={{ borderColor: 'var(--line)' }}
                 onClick={() => saveDish({ publish: false })}
+                loading={loadingAction === 'draft-dish'}
+                loadingLabel="Guardando..."
               >
                 Guardar borrador
-              </button>
-              <button
+              </LoadingButton>
+              <LoadingButton
                 type="button"
                 className="px-4 py-2 rounded-lg text-white font-semibold"
                 style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
                 onClick={() => saveDish({ publish: true })}
+                loading={loadingAction === 'publish-dish'}
+                loadingLabel="Publicando..."
               >
                 Publicar plato
-              </button>
+              </LoadingButton>
             </div>
           </div>
         </section>

@@ -34,6 +34,9 @@ export default function RegisterPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [locationLoading, setLocationLoading] = useState(false)
+  const [themeLoading, setThemeLoading] = useState(false)
+  const [buttonLoading, setButtonLoading] = useState('')
 
   const checks = useMemo(() => {
     const p = form.password || ''
@@ -63,6 +66,7 @@ export default function RegisterPage() {
       setError('Tu navegador no soporta geolocalizacion.')
       return
     }
+    setLocationLoading(true)
     navigator.geolocation.getCurrentPosition(
       (position) => {
         setError('')
@@ -70,15 +74,42 @@ export default function RegisterPage() {
           lat: position.coords.latitude,
           lng: position.coords.longitude,
         })
+        setLocationLoading(false)
       },
-      () => setError('No se pudo obtener tu ubicacion actual.'),
+      () => {
+        setError('No se pudo obtener tu ubicacion actual.')
+        setLocationLoading(false)
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     )
+  }
+
+  const onToggleTheme = () => {
+    setThemeLoading(true)
+    setButtonLoading('theme')
+    toggleTheme()
+    window.setTimeout(() => {
+      setThemeLoading(false)
+      setButtonLoading((current) => (current === 'theme' ? '' : current))
+    }, 150)
+  }
+
+  const onTogglePassword = () => {
+    setButtonLoading('password')
+    setShowPassword((prev) => !prev)
+    window.setTimeout(() => setButtonLoading((current) => (current === 'password' ? '' : current)), 150)
+  }
+
+  const onToggleConfirmPassword = () => {
+    setButtonLoading('confirm-password')
+    setShowConfirmPassword((prev) => !prev)
+    window.setTimeout(() => setButtonLoading((current) => (current === 'confirm-password' ? '' : current)), 150)
   }
 
   const onSubmit = async (event) => {
     event.preventDefault()
     setSubmitting(true)
+    setButtonLoading('submit')
     setError('')
     setSuccess('')
     try {
@@ -93,9 +124,10 @@ export default function RegisterPage() {
       setSuccess('Registro exitoso. Ahora puedes iniciar sesion.')
       setTimeout(() => navigate('/login'), 900)
     } catch (err) {
-      setError(err?.response?.data?.detail || 'No se pudo completar el registro.')
+      setError(err?.response?.data?.detail || err?.message || 'No se pudo completar el registro.')
     } finally {
       setSubmitting(false)
+      setButtonLoading((current) => (current === 'submit' ? '' : current))
     }
   }
 
@@ -143,14 +175,21 @@ export default function RegisterPage() {
           </Link>
           <button
             type="button"
-            onClick={toggleTheme}
+            onClick={onToggleTheme}
             className="h-12 px-4 rounded-xl border flex items-center gap-3"
             style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
             title={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+            disabled={themeLoading || buttonLoading === 'theme'}
           >
-            <span style={{ color: isDark ? '#94a3b8' : '#f59e0b' }}>☀</span>
-            <span style={{ color: 'var(--line)' }}>|</span>
-            <span style={{ color: isDark ? '#8b5cf6' : '#64748b' }}>🌙</span>
+            {themeLoading || buttonLoading === 'theme' ? (
+              <span>Cargando...</span>
+            ) : (
+              <>
+                <span style={{ color: isDark ? '#94a3b8' : '#f59e0b' }}>☀</span>
+                <span style={{ color: 'var(--line)' }}>|</span>
+                <span style={{ color: isDark ? '#8b5cf6' : '#64748b' }}>🌙</span>
+              </>
+            )}
           </button>
         </div>
       </div>
@@ -226,8 +265,9 @@ export default function RegisterPage() {
                       onClick={onUseCurrentLocation}
                       className="px-3 py-1.5 rounded-lg text-sm border"
                       style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
+                      disabled={locationLoading || buttonLoading === 'location'}
                     >
-                      Usar ubicacion actual
+                      {locationLoading || buttonLoading === 'location' ? 'Buscando...' : 'Usar ubicacion actual'}
                     </button>
                   </div>
 
@@ -257,7 +297,11 @@ export default function RegisterPage() {
                 onChange={onChange}
                 placeholder="Crea una contrasena"
                 left="🔒"
-                right={<button type="button" onClick={() => setShowPassword((prev) => !prev)}>{showPassword ? '🙈' : '👁'}</button>}
+                right={
+                  <button type="button" onClick={onTogglePassword} disabled={buttonLoading === 'password'}>
+                    {buttonLoading === 'password' ? '...' : showPassword ? '🙈' : '👁'}
+                  </button>
+                }
                 required
               />
               <Field
@@ -268,7 +312,11 @@ export default function RegisterPage() {
                 onChange={onChange}
                 placeholder="Confirma tu contrasena"
                 left="🔒"
-                right={<button type="button" onClick={() => setShowConfirmPassword((prev) => !prev)}>{showConfirmPassword ? '🙈' : '👁'}</button>}
+                right={
+                  <button type="button" onClick={onToggleConfirmPassword} disabled={buttonLoading === 'confirm-password'}>
+                    {buttonLoading === 'confirm-password' ? '...' : showConfirmPassword ? '🙈' : '👁'}
+                  </button>
+                }
                 required
               />
             </div>
@@ -292,11 +340,11 @@ export default function RegisterPage() {
             {success ? <p className="text-sm text-emerald-500">{success}</p> : null}
 
             <button
-              disabled={submitting}
+              disabled={submitting || buttonLoading === 'submit'}
               className="w-full h-14 rounded-xl text-white text-2xl font-bold disabled:opacity-60"
               style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
             >
-              {submitting ? 'Registrando...' : 'Crear cuenta'}
+              {submitting || buttonLoading === 'submit' ? 'Registrando...' : 'Crear cuenta'}
             </button>
 
             <div className="pt-2 text-center text-lg" style={{ color: 'var(--muted)' }}>
@@ -407,3 +455,4 @@ function RequirementItem({ ok, label }) {
     </span>
   )
 }
+

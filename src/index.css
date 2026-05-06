@@ -46,3 +46,18 @@ body {
   background: radial-gradient(circle at 80% 0%, rgba(124, 58, 237, 0.15), transparent 35%), var(--bg);
   color: var(--text);
 }
+
+.filter-select {
+  color: var(--text);
+  background-color: var(--panel-soft);
+}
+
+.filter-select option {
+  color: var(--text);
+  background-color: var(--panel);
+}
+
+.filter-select option:checked {
+  color: #ffffff;
+  background-color: var(--brand);
+}

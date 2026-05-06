@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
-  fetchClientExplore,
   fetchFavorites,
   fetchPreferences,
   removeFavorite,
@@ -11,6 +10,8 @@ import {
 const CUISINE_OPTIONS = [
   'tradicional',
   'fusion',
+  'internacional',
+  'veg',
   'italiana',
   'mexicana',
   'asiatica',
@@ -22,21 +23,26 @@ const CUISINE_OPTIONS = [
   'otra',
 ]
 
-function cuisineLabel(value) {
-  const map = {
-    tradicional: 'Tradicional',
-    fusion: 'Fusión',
-    italiana: 'Italiana',
-    mexicana: 'Mexicana',
-    asiatica: 'Asiática',
-    mediterranea: 'Mediterránea',
-    japonesa: 'Japonesa',
-    vegetariana: 'Vegetariana',
-    arabe: 'Árabe',
-    tailandesa: 'Tailandesa',
-    otra: 'Otra',
-  }
-  return map[value] || value
+const DIET_OPTIONS = ['regular', 'vegetariano', 'vegano', 'sin_gluten']
+
+const LABELS = {
+  tradicional: 'Tradicional',
+  fusion: 'Fusion',
+  internacional: 'Internacional',
+  veg: 'Veg',
+  italiana: 'Italiana',
+  mexicana: 'Mexicana',
+  asiatica: 'Asiatica',
+  mediterranea: 'Mediterranea',
+  japonesa: 'Japonesa',
+  vegetariana: 'Vegetariana',
+  arabe: 'Arabe',
+  tailandesa: 'Tailandesa',
+  otra: 'Otra',
+  regular: 'Regular',
+  vegetariano: 'Vegetariano',
+  vegano: 'Vegano',
+  sin_gluten: 'Sin gluten',
 }
 
 export default function FavoritesPage() {
@@ -46,24 +52,12 @@ export default function FavoritesPage() {
   const [prefs, setPrefs] = useState({ cuisine_types: [], diet_types: [], price_range: {} })
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [dishesIndex, setDishesIndex] = useState({})
 
   const load = async () => {
     setLoading(true)
     setError('')
     try {
-      const [fav, pr, explore] = await Promise.all([
-        fetchFavorites(),
-        fetchPreferences(),
-        fetchClientExplore({}),
-      ])
-
-      const map = {}
-      for (const dish of (explore?.dishes || [])) {
-        map[String(dish.id)] = dish
-      }
-
-      setDishesIndex(map)
+      const [fav, pr] = await Promise.all([fetchFavorites(), fetchPreferences()])
       setItems(fav.items || [])
       setPrefs({
         cuisine_types: pr?.cuisine_types || [],
@@ -91,10 +85,8 @@ export default function FavoritesPage() {
     return () => clearTimeout(timer)
   }, [message])
 
-  const favoriteDishItems = useMemo(
-    () => (items || []).filter((item) => item.favorite_type === 'dish'),
-    [items],
-  )
+  const dishItems = useMemo(() => (items || []).filter((item) => item.favorite_type === 'dish'), [items])
+  const chefItems = useMemo(() => (items || []).filter((item) => item.favorite_type === 'chef'), [items])
 
   const onRemove = async (item) => {
     try {
@@ -106,33 +98,42 @@ export default function FavoritesPage() {
     }
   }
 
-  const toggleCuisine = (value) => {
-    const current = new Set(prefs.cuisine_types || [])
+  const toggleArrayValue = (field, value) => {
+    const current = new Set(prefs[field] || [])
     if (current.has(value)) current.delete(value)
     else current.add(value)
-    setPrefs((prev) => ({ ...prev, cuisine_types: Array.from(current) }))
+    setPrefs((prev) => ({ ...prev, [field]: Array.from(current) }))
+  }
+
+  const setPrice = (field, value) => {
+    setPrefs((prev) => ({
+      ...prev,
+      price_range: {
+        ...(prev.price_range || {}),
+        [field]: value === '' ? '' : Number(value),
+      },
+    }))
   }
 
   const onSavePrefs = async () => {
     try {
-      await savePreferences(prefs)
+      await savePreferences({
+        cuisine_types: prefs.cuisine_types || [],
+        diet_types: prefs.diet_types || [],
+        price_range: cleanPriceRange(prefs.price_range || {}),
+      })
       setMessage('Preferencias guardadas correctamente.')
-    } catch {
-      setMessage('No se pudieron guardar las preferencias.')
+    } catch (err) {
+      setMessage(err?.response?.data?.detail || 'No se pudieron guardar las preferencias.')
     }
   }
 
   return (
     <section className="space-y-5">
       <header className="space-y-2">
-        <h1 className="text-5xl font-bold flex items-center gap-3">
-          <span className="h-12 w-12 rounded-2xl grid place-items-center text-3xl" style={{ backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}>
-            ♡
-          </span>
-          Favoritos y preferencias
-        </h1>
+        <h1 className="text-5xl font-bold">Favoritos y preferencias</h1>
         <p className="text-2xl" style={{ color: 'var(--muted)' }}>
-          Administra tus platos favoritos y personaliza tus preferencias para mejores recomendaciones.
+          Guarda platos o cocineros favoritos y ajusta tus preferencias para personalizar el marketplace.
         </p>
         {message && (
           <p className="text-sm rounded-xl border px-3 py-2 inline-block" style={{ borderColor: 'var(--line)', color: 'var(--brand-2)', backgroundColor: 'var(--panel-soft)' }}>
@@ -143,14 +144,11 @@ export default function FavoritesPage() {
       </header>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3 items-start">
-        <article className="lg:col-span-2 rounded-2xl border p-4 md:p-5 space-y-4" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
+        <article className="lg:col-span-2 rounded-2xl border p-4 md:p-5 space-y-5" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="h-14 w-14 rounded-2xl grid place-items-center text-3xl" style={{ backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}>🔖</span>
-              <div>
-                <h2 className="text-3xl font-bold">Favoritos</h2>
-                <p style={{ color: 'var(--muted)' }}>Tus platos favoritos guardados.</p>
-              </div>
+            <div>
+              <h2 className="text-3xl font-bold">Favoritos</h2>
+              <p style={{ color: 'var(--muted)' }}>Tus platos y cocineros guardados.</p>
             </div>
             <button
               type="button"
@@ -158,111 +156,78 @@ export default function FavoritesPage() {
               className="px-4 py-2 rounded-xl border text-lg font-semibold"
               style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}
             >
-              + Agregar favorito
+              Explorar
             </button>
           </div>
 
           {loading ? <p style={{ color: 'var(--muted)' }}>Cargando favoritos...</p> : null}
 
-          {!loading && favoriteDishItems.length === 0 ? (
+          {!loading && !items.length ? (
             <div className="rounded-2xl border border-dashed p-10 text-center space-y-2" style={{ borderColor: 'var(--line)', color: 'var(--muted)' }}>
-              <p className="text-4xl">➕</p>
-              <h3 className="text-3xl font-bold" style={{ color: 'var(--text)' }}>Aún no tienes más favoritos</h3>
-              <p>Agrega platos que te encanten para ver mejores recomendaciones.</p>
+              <h3 className="text-3xl font-bold" style={{ color: 'var(--text)' }}>Aún no tienes favoritos</h3>
+              <p>Agrega platos o cocineros desde el dashboard o desde el detalle del plato.</p>
             </div>
           ) : null}
 
-          {!loading && favoriteDishItems.length > 0 ? (
-            <div className="space-y-3">
-              {favoriteDishItems.map((item) => {
-                const dish = dishesIndex[String(item.ref_id)] || null
-                return (
-                  <div key={item._id} className="rounded-2xl border p-3 md:p-4 flex gap-3 items-center" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-                    <img
-                      src={dish?.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300&q=80&auto=format&fit=crop'}
-                      alt={dish?.name || 'Plato favorito'}
-                      className="h-24 w-24 rounded-2xl object-cover border"
-                      style={{ borderColor: 'var(--line)' }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-2xl font-bold truncate">{dish?.name || 'Plato favorito'}</h3>
-                        <span className="text-sm px-2 py-1 rounded-full" style={{ backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}>Dish</span>
-                      </div>
-                      <p className="text-sm" style={{ color: 'var(--muted)' }}>ID: {item.ref_id}</p>
-                      <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                        Guardado el {item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => onRemove(item)}
-                      className="px-3 py-2 rounded-xl border text-red-600 font-semibold"
-                      style={{ borderColor: '#fecaca', backgroundColor: '#fff1f2' }}
-                    >
-                      🗑 Quitar
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
+          {!loading && dishItems.length > 0 ? (
+            <FavoriteSection title="Platos favoritos">
+              {dishItems.map((item) => (
+                <FavoriteCard key={item._id} item={item} onRemove={onRemove} onOpen={() => navigate(`/client/dishes/${item.ref_id}`)} />
+              ))}
+            </FavoriteSection>
           ) : null}
 
-          <div className="rounded-2xl border p-4 flex items-center justify-between" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
-            <div>
-              <h3 className="text-2xl font-bold">Descubre más</h3>
-              <p style={{ color: 'var(--muted)' }}>Agrega más platos a tus favoritos y recibe recomendaciones personalizadas.</p>
-            </div>
-            <span className="text-3xl" style={{ color: 'var(--brand-2)' }}>›</span>
-          </div>
+          {!loading && chefItems.length > 0 ? (
+            <FavoriteSection title="Cocineros favoritos">
+              {chefItems.map((item) => (
+                <FavoriteCard key={item._id} item={item} onRemove={onRemove} />
+              ))}
+            </FavoriteSection>
+          ) : null}
         </article>
 
         <aside className="rounded-2xl border p-4 md:p-5 space-y-4" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-          <div className="flex items-center gap-3">
-            <span className="h-14 w-14 rounded-2xl grid place-items-center text-3xl" style={{ backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}>🍽️</span>
-            <div>
-              <h2 className="text-3xl font-bold">Preferencias</h2>
-              <p style={{ color: 'var(--muted)' }}>Selecciona los tipos de cocina que más te gustan.</p>
-            </div>
+          <div>
+            <h2 className="text-3xl font-bold">Preferencias</h2>
+            <p style={{ color: 'var(--muted)' }}>Tipos de comida, restricciones y rango de precio.</p>
           </div>
+
+          <PreferenceButtons
+            title="Tipos de cocina"
+            options={CUISINE_OPTIONS}
+            selected={prefs.cuisine_types || []}
+            onToggle={(value) => toggleArrayValue('cuisine_types', value)}
+          />
+
+          <PreferenceButtons
+            title="Restricciones alimentarias"
+            options={DIET_OPTIONS}
+            selected={prefs.diet_types || []}
+            onToggle={(value) => toggleArrayValue('diet_types', value)}
+          />
 
           <div className="space-y-2">
-            <p className="font-semibold text-xl">Tipos de cocina</p>
-            <div className="flex flex-wrap gap-2">
-              {CUISINE_OPTIONS.map((option) => {
-                const active = (prefs.cuisine_types || []).includes(option)
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => toggleCuisine(option)}
-                    className="px-3 py-2 rounded-xl border text-lg transition"
-                    style={
-                      active
-                        ? {
-                          borderColor: 'transparent',
-                          color: '#fff',
-                          background: 'linear-gradient(90deg, var(--brand), var(--brand-2))',
-                        }
-                        : {
-                          borderColor: 'var(--line)',
-                          color: 'var(--text)',
-                          backgroundColor: 'var(--panel)',
-                        }
-                    }
-                  >
-                    {cuisineLabel(option)} {active ? '✓' : ''}
-                  </button>
-                )
-              })}
+            <p className="font-semibold text-xl">Rango de precio</p>
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                type="number"
+                min="0"
+                value={prefs.price_range?.min ?? ''}
+                onChange={(event) => setPrice('min', event.target.value)}
+                placeholder="Min Bs"
+                className="border rounded-xl px-3 py-2"
+                style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
+              />
+              <input
+                type="number"
+                min="0"
+                value={prefs.price_range?.max ?? ''}
+                onChange={(event) => setPrice('max', event.target.value)}
+                placeholder="Max Bs"
+                className="border rounded-xl px-3 py-2"
+                style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
+              />
             </div>
-          </div>
-
-          <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
-            <h3 className="text-xl font-bold">Mejores recomendaciones</h3>
-            <p style={{ color: 'var(--muted)' }}>
-              Cuantos más tipos de cocina selecciones, mejores serán nuestras sugerencias para ti.
-            </p>
           </div>
 
           <button
@@ -271,10 +236,111 @@ export default function FavoritesPage() {
             className="w-full px-4 py-3 rounded-xl text-white text-xl font-bold"
             style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
           >
-            💾 Guardar preferencias
+            Guardar preferencias
           </button>
         </aside>
       </div>
     </section>
   )
+}
+
+function FavoriteSection({ title, children }) {
+  return (
+    <section className="space-y-3">
+      <h3 className="text-2xl font-bold">{title}</h3>
+      <div className="space-y-3">{children}</div>
+    </section>
+  )
+}
+
+function FavoriteCard({ item, onRemove, onOpen }) {
+  const target = item.target || {}
+  const isDish = item.favorite_type === 'dish'
+  const image = target.image_url || target.profile_image_url
+
+  return (
+    <div className="rounded-2xl border p-3 md:p-4 flex gap-3 items-center" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
+      <div className="h-24 w-24 rounded-2xl overflow-hidden border grid place-items-center shrink-0" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+        {image ? <img src={image} alt={target.name || 'Favorito'} className="h-full w-full object-cover" /> : <span style={{ color: 'var(--muted)' }}>Sin foto</span>}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="text-2xl font-bold truncate">{target.name || (isDish ? 'Plato favorito' : 'Cocinero favorito')}</h3>
+          <span className="text-sm px-2 py-1 rounded-full" style={{ backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}>
+            {isDish ? 'Plato' : 'Cocinero'}
+          </span>
+        </div>
+        {isDish ? (
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>
+            {target.chef_name || 'Cocinero'} {target.approx_price ? `- Bs ${Number(target.approx_price).toFixed(2)}` : ''}
+          </p>
+        ) : (
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>
+            {target.specialties?.length ? target.specialties.join(', ') : target.public_description || 'Sin especialidades registradas'}
+          </p>
+        )}
+        <p className="text-sm" style={{ color: 'var(--muted)' }}>
+          Guardado el {item.created_at ? new Date(item.created_at).toLocaleDateString() : '-'}
+        </p>
+      </div>
+      <div className="flex flex-col gap-2">
+        {onOpen ? (
+          <button type="button" onClick={onOpen} className="px-3 py-2 rounded-xl border font-semibold" style={{ borderColor: 'var(--line)' }}>
+            Ver
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => onRemove(item)}
+          className="px-3 py-2 rounded-xl border text-red-600 font-semibold"
+          style={{ borderColor: '#fecaca', backgroundColor: '#fff1f2' }}
+        >
+          Quitar
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function PreferenceButtons({ title, options, selected, onToggle }) {
+  return (
+    <div className="space-y-2">
+      <p className="font-semibold text-xl">{title}</p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => {
+          const active = selected.includes(option)
+          return (
+            <button
+              key={option}
+              type="button"
+              onClick={() => onToggle(option)}
+              className="px-3 py-2 rounded-xl border text-base transition"
+              style={
+                active
+                  ? {
+                    borderColor: 'transparent',
+                    color: '#fff',
+                    background: 'linear-gradient(90deg, var(--brand), var(--brand-2))',
+                  }
+                  : {
+                    borderColor: 'var(--line)',
+                    color: 'var(--text)',
+                    backgroundColor: 'var(--panel)',
+                  }
+              }
+            >
+              {LABELS[option] || option} {active ? '✓' : ''}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function cleanPriceRange(priceRange) {
+  const result = {}
+  if (priceRange.min !== '' && priceRange.min !== undefined) result.min = Number(priceRange.min)
+  if (priceRange.max !== '' && priceRange.max !== undefined) result.max = Number(priceRange.max)
+  return result
 }

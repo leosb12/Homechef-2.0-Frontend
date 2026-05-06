@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchChefDishes, fetchChefMenu, saveChefMenu } from '../services/chef_service'
+import LoadingButton from '../components/LoadingButton'
 
 const ITEM_STATUS_OPTIONS = [
   { value: 'available', label: 'Disponible' },
@@ -25,8 +26,14 @@ export default function ChefMenuPage() {
   const [isActive, setIsActive] = useState(true)
   const [message, setMessage] = useState('')
   const [isError, setIsError] = useState(false)
+  const [loadingAction, setLoadingAction] = useState('')
 
-  const load = async () => {
+  const setNotice = (text, error = false) => {
+    setIsError(error)
+    setMessage(text)
+  }
+
+  const load = async ({ keepMessage = false } = {}) => {
     try {
       const [dishesData, menuData] = await Promise.all([fetchChefDishes(), fetchChefMenu()])
       const dishItems = dishesData.items || []
@@ -36,10 +43,9 @@ export default function ChefMenuPage() {
       setSchedule(menuData.schedule || '')
       setIsActive(menuData.is_active ?? true)
       if (items.length) setSelectedDishId(items[0].dish_id)
-      setMessage('')
+      if (!keepMessage) setNotice('')
     } catch (err) {
-      setIsError(true)
-      setMessage(err?.response?.data?.detail || 'No se pudo cargar menu del dia.')
+      setNotice(err?.response?.data?.detail || 'No se pudo cargar menu del dia.', true)
     }
   }
 
@@ -67,7 +73,10 @@ export default function ChefMenuPage() {
   )
 
   const addToMenu = (dish) => {
-    if (menuItems.some((x) => x.dish_id === dish._id)) return
+    if (menuItems.some((x) => x.dish_id === dish._id)) {
+      setNotice(`${dish.name} ya esta en el menu.`, true)
+      return
+    }
     const next = {
       dish_id: dish._id,
       name: dish.name,
@@ -76,18 +85,24 @@ export default function ChefMenuPage() {
     }
     setMenuItems((prev) => [...prev, next])
     setSelectedDishId(dish._id)
+    setNotice(`${dish.name} agregado al menu. Recuerda actualizar para guardar cambios.`)
   }
 
   const removeFromMenu = (dishId) => {
+    const current = menuItems.find((x) => x.dish_id === dishId)
     setMenuItems((prev) => prev.filter((x) => x.dish_id !== dishId))
     if (selectedDishId === dishId) setSelectedDishId('')
+    setNotice(`${current?.name || 'Plato'} quitado del menu. Recuerda actualizar para guardar cambios.`)
   }
 
-  const updateMenuItem = (dishId, patch) => {
+  const updateMenuItem = (dishId, patch, confirmation = '') => {
     setMenuItems((prev) => prev.map((x) => (x.dish_id === dishId ? { ...x, ...patch } : x)))
+    if (confirmation) setNotice(confirmation)
   }
 
   const saveMenu = async () => {
+    setLoadingAction('save-menu')
+    setNotice('')
     try {
       const payload = {
         schedule: String(schedule || '').trim(),
@@ -100,13 +115,23 @@ export default function ChefMenuPage() {
         })),
       }
       await saveChefMenu(payload)
-      setIsError(false)
-      setMessage('Menu del dia actualizado correctamente.')
-      await load()
+      setNotice('Menu del dia actualizado correctamente.')
+      await load({ keepMessage: true })
     } catch (err) {
-      setIsError(true)
-      setMessage(err?.response?.data?.detail || 'No se pudo guardar el menu del dia.')
+      setNotice(err?.response?.data?.detail || 'No se pudo guardar el menu del dia.', true)
+    } finally {
+      setLoadingAction((current) => (current === 'save-menu' ? '' : current))
     }
+  }
+
+  const flashAction = (action, fn, errorMessage = 'No se pudo completar la accion.') => {
+    setLoadingAction(action)
+    try {
+      fn()
+    } catch (err) {
+      setNotice(err?.message || errorMessage, true)
+    }
+    window.setTimeout(() => setLoadingAction((current) => (current === action ? '' : current)), 150)
   }
 
   return (
@@ -118,15 +143,18 @@ export default function ChefMenuPage() {
             Organiza los platos activos de la jornada, porciones y disponibilidad.
           </p>
         </div>
-        <button
+        <LoadingButton
           type="button"
           onClick={saveMenu}
           className="px-4 py-2 rounded-lg text-white font-semibold"
           style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
+          loading={loadingAction === 'save-menu'}
+          loadingLabel="Guardando..."
         >
           Actualizar menu
-        </button>
+        </LoadingButton>
       </header>
+      {message && <p className={isError ? 'text-red-500' : 'text-emerald-500'}>{message}</p>}
 
       <div className="grid grid-cols-1 gap-4 min-[1024px]:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)] items-start">
         <aside className="rounded-xl border p-3 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
@@ -173,32 +201,41 @@ export default function ChefMenuPage() {
 
                     <div className="flex gap-2 mt-2">
                       {!dish.in_menu ? (
-                        <button
+                        <LoadingButton
                           type="button"
                           className="px-2 py-1 text-xs rounded border"
                           style={{ borderColor: 'var(--line)' }}
-                          onClick={() => addToMenu(dish)}
+                          onClick={() => flashAction(`add-${dish._id}`, () => addToMenu(dish))}
+                          loading={loadingAction === `add-${dish._id}`}
+                          loadingLabel="..."
                         >
                           Marcar en menu
-                        </button>
+                        </LoadingButton>
                       ) : (
                         <>
-                          <button
+                          <LoadingButton
                             type="button"
                             className="px-2 py-1 text-xs rounded border"
                             style={{ borderColor: 'var(--line)' }}
-                            onClick={() => setSelectedDishId(dish._id)}
+                            onClick={() => flashAction(`select-${dish._id}`, () => {
+                              setSelectedDishId(dish._id)
+                              setNotice(`${dish.name} listo para editar.`)
+                            })}
+                            loading={loadingAction === `select-${dish._id}`}
+                            loadingLabel="..."
                           >
                             Editar en menu
-                          </button>
-                          <button
+                          </LoadingButton>
+                          <LoadingButton
                             type="button"
                             className="px-2 py-1 text-xs rounded border"
                             style={{ borderColor: 'var(--line)' }}
-                            onClick={() => removeFromMenu(dish._id)}
+                            onClick={() => flashAction(`remove-${dish._id}`, () => removeFromMenu(dish._id))}
+                            loading={loadingAction === `remove-${dish._id}`}
+                            loadingLabel="..."
                           >
                             Quitar
-                          </button>
+                          </LoadingButton>
                         </>
                       )}
                     </div>
@@ -225,11 +262,21 @@ export default function ChefMenuPage() {
                 style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
                 placeholder="Ej: 11:00 - 15:00"
                 value={schedule}
-                onChange={(e) => setSchedule(e.target.value)}
+                onChange={(e) => {
+                  setSchedule(e.target.value)
+                  setNotice('Horario del menu actualizado. Recuerda actualizar para guardar cambios.')
+                }}
               />
             </label>
             <label className="flex items-end gap-2 pb-2">
-              <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={isActive}
+                onChange={(e) => {
+                  setIsActive(e.target.checked)
+                  setNotice(e.target.checked ? 'Menu activado. Recuerda actualizar para guardar cambios.' : 'Menu desactivado. Recuerda actualizar para guardar cambios.')
+                }}
+              />
               <span>Menu activo</span>
             </label>
           </div>
@@ -253,7 +300,7 @@ export default function ChefMenuPage() {
                     onChange={(e) =>
                       updateMenuItem(selectedMenuItem.dish_id, {
                         portions: Math.max(1, Number(e.target.value || 1)),
-                      })
+                      }, `Porciones de ${selectedMenuItem.name} actualizadas. Recuerda actualizar para guardar cambios.`)
                     }
                   />
                 </label>
@@ -263,7 +310,7 @@ export default function ChefMenuPage() {
                     className="h-11 w-full rounded-lg border px-3"
                     style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
                     value={selectedMenuItem.status}
-                    onChange={(e) => updateMenuItem(selectedMenuItem.dish_id, { status: e.target.value })}
+                    onChange={(e) => updateMenuItem(selectedMenuItem.dish_id, { status: e.target.value }, `Disponibilidad de ${selectedMenuItem.name} actualizada. Recuerda actualizar para guardar cambios.`)}
                   >
                     {ITEM_STATUS_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -293,7 +340,6 @@ export default function ChefMenuPage() {
         </section>
       </div>
 
-      {message && <p className={isError ? 'text-red-500' : 'text-emerald-500'}>{message}</p>}
     </section>
   )
 }

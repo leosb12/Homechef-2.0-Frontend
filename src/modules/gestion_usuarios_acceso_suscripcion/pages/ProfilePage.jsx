@@ -4,6 +4,9 @@ import { changePassword, fetchProfile, updateProfile } from '../services/auth_se
 export default function ProfilePage() {
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [savingProfile, setSavingProfile] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [savingPrefs, setSavingPrefs] = useState({ notify_gmail: false, notify_push: false })
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [notifMessage, setNotifMessage] = useState('')
@@ -63,12 +66,15 @@ export default function ProfilePage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+    setSavingProfile(true)
     try {
       const data = await updateProfile(form)
       setProfile(data)
       setSuccess('Información actualizada')
     } catch (err) {
       setError(err?.response?.data?.detail || 'No se pudo guardar el perfil.')
+    } finally {
+      setSavingProfile(false)
     }
   }
 
@@ -76,12 +82,15 @@ export default function ProfilePage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+    setSavingPassword(true)
     try {
       await changePassword(pwd)
       setPwd({ current_password: '', new_password: '', new_password_confirm: '' })
       setSuccess('Contraseña actualizada')
     } catch (err) {
-      setError(err?.response?.data?.detail || 'No se pudo actualizar la contraseña.')
+      setError(err?.response?.data?.detail || err?.message || 'No se pudo actualizar la contraseña.')
+    } finally {
+      setSavingPassword(false)
     }
   }
 
@@ -90,6 +99,7 @@ export default function ProfilePage() {
     const next = { ...form, [key]: !form[key] }
     setForm(next)
     setNotifMessage('')
+    setSavingPrefs((current) => ({ ...current, [key]: true }))
     try {
       await updateProfile({ notify_gmail: next.notify_gmail, notify_push: next.notify_push })
       const channel = key === 'notify_gmail' ? 'Gmail' : 'Push'
@@ -98,6 +108,8 @@ export default function ProfilePage() {
     } catch {
       setForm(prev)
       setError('No se pudo actualizar la preferencia de notificación.')
+    } finally {
+      setSavingPrefs((current) => ({ ...current, [key]: false }))
     }
   }
 
@@ -148,8 +160,13 @@ export default function ProfilePage() {
         </div>
 
         <div className="mt-20 flex items-center justify-between gap-3 flex-wrap">
-          <button className="h-10 px-6 rounded-xl text-white font-semibold flex items-center gap-2" style={{ background: 'linear-gradient(90deg,#6d28d9,#8b5cf6)' }}>
-            <RefreshIcon className="h-4 w-4" /> Guardar cambios
+          <button
+            disabled={savingProfile}
+            className="h-10 px-6 rounded-xl text-white font-semibold flex items-center gap-2 disabled:opacity-60"
+            style={{ background: 'linear-gradient(90deg,#6d28d9,#8b5cf6)' }}
+          >
+            <RefreshIcon className={`h-4 w-4 ${savingProfile ? 'animate-spin' : ''}`} />
+            {savingProfile ? 'Guardando...' : 'Guardar cambios'}
           </button>
           {success ? <span className="px-4 py-1.5 rounded-full text-sm font-medium text-green-700 bg-green-100">✓ {success}</span> : null}
         </div>
@@ -193,8 +210,13 @@ export default function ProfilePage() {
           </div>
 
           <div className="mt-20 flex items-center gap-2 flex-wrap">
-            <button className="h-10 px-6 rounded-xl text-white font-semibold flex items-center gap-2" style={{ background: 'linear-gradient(90deg,#6d28d9,#8b5cf6)' }}>
-              <LockIcon className="h-4 w-4" /> Actualizar contraseña
+            <button
+              disabled={savingPassword}
+              className="h-10 px-6 rounded-xl text-white font-semibold flex items-center gap-2 disabled:opacity-60"
+              style={{ background: 'linear-gradient(90deg,#6d28d9,#8b5cf6)' }}
+            >
+              <LockIcon className={`h-4 w-4 ${savingPassword ? 'animate-spin' : ''}`} />
+              {savingPassword ? 'Actualizando...' : 'Actualizar contraseña'}
             </button>
             <div className="text-xs rounded-lg px-3 py-2" style={{ backgroundColor: '#dcfce7', color: '#166534' }}>
               Usa al menos 8 caracteres con letras, números y símbolos.
@@ -205,8 +227,8 @@ export default function ProfilePage() {
         <section className="rounded-3xl border p-6" style={{ borderColor: 'var(--line)', color: 'var(--text)', backgroundColor: 'var(--panel)' }}>
           <SectionTitle icon={<BellIcon className="h-5 w-5" />} title="Preferencias de notificación" subtitle="Elige cómo deseas recibir tus notificaciones." />
 
-          <ToggleRow icon={<GmailBrandIcon className="h-6 w-6" />} title="Notificaciones por Gmail" subtitle="Recibe actualizaciones y promociones en tu correo." enabled={form.notify_gmail} onToggle={() => onTogglePreference('notify_gmail')} />
-          <ToggleRow icon={<PushNotificationIcon className="h-6 w-6" />} title="Notificaciones Push" subtitle="Recibe notificaciones en tu dispositivo." enabled={form.notify_push} onToggle={() => onTogglePreference('notify_push')} />
+          <ToggleRow icon={<GmailBrandIcon className="h-6 w-6" />} title="Notificaciones por Gmail" subtitle="Recibe actualizaciones y promociones en tu correo." enabled={form.notify_gmail} pending={savingPrefs.notify_gmail} onToggle={() => onTogglePreference('notify_gmail')} />
+          <ToggleRow icon={<PushNotificationIcon className="h-6 w-6" />} title="Notificaciones Push" subtitle="Recibe notificaciones en tu dispositivo." enabled={form.notify_push} pending={savingPrefs.notify_push} onToggle={() => onTogglePreference('notify_push')} />
 
           <p className="mt-3 rounded-xl px-3 py-2 text-sm" style={{ backgroundColor: 'var(--panel-soft)', color: 'var(--muted)' }}>
             Puedes cambiar estas preferencias en cualquier momento.
@@ -294,7 +316,7 @@ function fitInputIcon(icon) {
     },
   })
 }
-function ToggleRow({ icon, title, subtitle, enabled, onToggle }) {
+function ToggleRow({ icon, title, subtitle, enabled, pending, onToggle }) {
   return (
     <div className="rounded-xl border p-3 flex items-center justify-between mt-2" style={{ borderColor: 'var(--line)' }}>
       <div className="flex items-start gap-3">
@@ -312,8 +334,9 @@ function ToggleRow({ icon, title, subtitle, enabled, onToggle }) {
       <button
         type="button"
         onClick={onToggle}
+        disabled={pending}
         aria-label={enabled ? 'Desactivar preferencia' : 'Activar preferencia'}
-        className="relative"
+        className="relative disabled:opacity-60"
         style={{
           width: 48,
           height: 28,

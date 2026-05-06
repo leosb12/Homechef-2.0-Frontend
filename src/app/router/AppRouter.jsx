@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect } from 'react'
 import PublicLayout from '../layouts/PublicLayout'
 import ClientLayout from '../layouts/ClientLayout'
 import ChefLayout from '../layouts/ChefLayout'
@@ -8,19 +9,28 @@ import PublicMarketplaceDashboardPage from '../../modules/marketplace_platos/pag
 import LoginPage from '../../modules/gestion_usuarios_acceso_suscripcion/pages/LoginPage'
 import RegisterPage from '../../modules/gestion_usuarios_acceso_suscripcion/pages/RegisterPage'
 import RecoverPasswordPage from '../../modules/gestion_usuarios_acceso_suscripcion/pages/RecoverPasswordPage'
+import ResetPasswordPage from '../../modules/gestion_usuarios_acceso_suscripcion/pages/ResetPasswordPage'
 import ProfilePage from '../../modules/gestion_usuarios_acceso_suscripcion/pages/ProfilePage'
 import ClientExplorePage from '../../modules/marketplace_platos/pages/ClientExplorePage'
 import DishDetailPage from '../../modules/marketplace_platos/pages/DishDetailPage'
 import FavoritesPage from '../../modules/marketplace_platos/pages/FavoritesPage'
+import ChefPublicProfilePage from '../../modules/marketplace_platos/pages/ChefPublicProfilePage'
 import ChefDashboardPage from '../../modules/gestion_cocinero/pages/ChefDashboardPage'
 import ChefDishesPage from '../../modules/gestion_cocinero/pages/ChefDishesPage'
 import ChefMenuPage from '../../modules/gestion_cocinero/pages/ChefMenuPage'
 import ChefProfilePage from '../../modules/gestion_cocinero/pages/ChefProfilePage'
 import ChefAvailabilityPage from '../../modules/gestion_cocinero/pages/ChefAvailabilityPage'
+import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 
 function Page({ title }) { return <div><h2 className="text-xl font-semibold">{title}</h2></div> }
 
 export default function AppRouter() {
+  const syncFromStorage = useAuthSession((state) => state.syncFromStorage)
+  
+  useEffect(() => {
+    syncFromStorage()
+  }, [syncFromStorage])
+  
   return (
     <Routes>
       <Route element={<PublicLayout />}>
@@ -28,11 +38,13 @@ export default function AppRouter() {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/recover-password" element={<RecoverPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
       </Route>
 
       <Route path="/client" element={<ClientLayout />}>
         <Route path="explore" element={<ClientExplorePage />} />
         <Route path="dishes/:id" element={<DishDetailPage />} />
+        <Route path="chefs/:id" element={<ChefPublicProfilePage />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="cart" element={<Page title="Carrito" />} />
         <Route path="checkout" element={<Page title="Checkout" />} />

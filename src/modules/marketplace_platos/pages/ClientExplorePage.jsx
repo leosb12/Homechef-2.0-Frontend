@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import PublicDishCard from '../components/PublicDishCard'
 import { addFavorite, fetchClientExplore, fetchFavorites, removeFavorite } from '../services/public_dashboard_service'
@@ -22,10 +22,12 @@ export default function ClientExplorePage() {
   const [cuisineType, setCuisineType] = useState('')
   const [dietType, setDietType] = useState('')
   const [locationAvailable, setLocationAvailable] = useState('true')
+  const [clientLocation, setClientLocation] = useState(null)
   const [isTypingSearch, setIsTypingSearch] = useState(false)
   const [favoriteDishIds, setFavoriteDishIds] = useState(new Set())
   const [favoriteConfirm, setFavoriteConfirm] = useState(null)
   const [searchReady, setSearchReady] = useState(false)
+  const searchEffectInitialized = useRef(false)
 
   const loadExplore = async (filters = {}, favoriteIdsOverride = null) => {
     setLoading(true)
@@ -60,7 +62,9 @@ export default function ClientExplorePage() {
           .filter((item) => item.favorite_type === 'dish')
           .map((item) => String(item.ref_id)))
         setFavoriteDishIds(ids)
-        await loadExplore({}, ids)
+        const location = await resolveClientLocation()
+        setClientLocation(location)
+        await loadExplore(withLocationParams({}, location), ids)
       } catch (err) {
         if (err?.response?.status === 401 || err?.response?.status === 403) {
           blockedByAuth = true
@@ -68,7 +72,7 @@ export default function ClientExplorePage() {
           return
         }
         // Si falla favoritos, continuamos con explore normal.
-        await loadExplore({})
+        await loadExplore(withLocationParams({}, null))
       } finally {
         if (blockedByAuth) return
         setSearchReady(true)
@@ -80,32 +84,23 @@ export default function ClientExplorePage() {
   const onApplyFilters = (event) => {
     event.preventDefault()
     loadExplore({
-      q,
-      featured,
-      sort,
-      min_price: minPrice,
-      max_price: maxPrice,
-      availability,
-      cuisine_type: cuisineType,
-      diet_type: dietType,
-      location_available: locationAvailable,
+      ...currentFilters(),
+      ...locationParams(clientLocation),
     })
   }
 
   useEffect(() => {
     if (!searchReady) return
+    if (!searchEffectInitialized.current) {
+      searchEffectInitialized.current = true
+      return
+    }
+
     const timer = setTimeout(() => {
       setIsTypingSearch(true)
       loadExplore({
-        q,
-        featured,
-        sort,
-        min_price: minPrice,
-        max_price: maxPrice,
-        availability,
-        cuisine_type: cuisineType,
-        diet_type: dietType,
-        location_available: locationAvailable,
+        ...currentFilters(),
+        ...locationParams(clientLocation),
       }).finally(() => setIsTypingSearch(false))
     }, 350)
     return () => clearTimeout(timer)
@@ -132,7 +127,7 @@ export default function ClientExplorePage() {
     setCuisineType('')
     setDietType('')
     setLocationAvailable('true')
-    loadExplore({})
+    loadExplore(withLocationParams({}, clientLocation))
   }
 
   const onRestrictedAction = (action) => {
@@ -184,6 +179,18 @@ export default function ClientExplorePage() {
 
   const heroImage = theme === 'dark' ? dashboardOscuro : dashboardClaro
 
+  const currentFilters = () => ({
+    q,
+    featured,
+    sort,
+    min_price: minPrice,
+    max_price: maxPrice,
+    availability,
+    cuisine_type: cuisineType,
+    diet_type: dietType,
+    location_available: clientLocation ? locationAvailable : 'false',
+  })
+
   return (
     <section className="space-y-6">
       <header className="relative overflow-hidden rounded-3xl border p-6 lg:p-8 min-h-[220px]" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
@@ -222,17 +229,17 @@ export default function ClientExplorePage() {
             className="w-full bg-transparent outline-none"
           />
         </div>
-        <select value={featured} onChange={(e) => setFeatured(e.target.value)} className="border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
+        <select value={featured} onChange={(e) => setFeatured(e.target.value)} className="filter-select border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)' }}>
           <option value="">Todos</option>
           <option value="true">Solo destacados</option>
           <option value="false">No destacados</option>
         </select>
-        <select value={sort} onChange={(e) => setSort(e.target.value)} className="border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
+        <select value={sort} onChange={(e) => setSort(e.target.value)} className="filter-select border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)' }}>
           <option value="">Orden por relevancia</option>
           <option value="price_asc">Precio menor a mayor</option>
           <option value="price_desc">Precio mayor a menor</option>
           <option value="popular_desc">Popularidad</option>
-          <option value="rating_desc">Calificacion</option>
+          <option value="rating_desc">Calificación</option>
         </select>
         <input
           value={minPrice}
@@ -252,23 +259,23 @@ export default function ClientExplorePage() {
           className="border rounded-xl px-3 py-2"
           style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
         />
-        <select value={availability} onChange={(e) => setAvailability(e.target.value)} className="border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
+        <select value={availability} onChange={(e) => setAvailability(e.target.value)} className="filter-select border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)' }}>
           <option value="">Disponibilidad: todos</option>
           <option value="available">Disponibles</option>
           <option value="unavailable">No disponibles</option>
         </select>
-        <select value={cuisineType} onChange={(e) => setCuisineType(e.target.value)} className="border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
+        <select value={cuisineType} onChange={(e) => setCuisineType(e.target.value)} className="filter-select border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)' }}>
           <option value="">Tipo cocina: todos</option>
           <option value="tradicional">Tradicional</option>
           <option value="fusion">Fusion</option>
         </select>
-        <select value={dietType} onChange={(e) => setDietType(e.target.value)} className="border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
+        <select value={dietType} onChange={(e) => setDietType(e.target.value)} className="filter-select border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)' }}>
           <option value="">Dieta: todos</option>
           <option value="regular">Regular</option>
           <option value="vegetariano">Vegetariano</option>
         </select>
-        <select value={locationAvailable} onChange={(e) => setLocationAvailable(e.target.value)} className="border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}>
-          <option value="true">Ubicacion disponible</option>
+        <select value={locationAvailable} onChange={(e) => setLocationAvailable(e.target.value)} className="filter-select border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)' }}>
+          <option value="true">Ubicación disponible</option>
           <option value="false">Sin ubicacion</option>
         </select>
         <button className="px-4 py-2 rounded-xl text-white font-semibold" style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}>
@@ -353,4 +360,40 @@ export default function ClientExplorePage() {
       )}
     </section>
   )
+}
+
+function withLocationParams(filters, location) {
+  return {
+    ...filters,
+    ...locationParams(location),
+    location_available: location ? filters.location_available || 'true' : 'false',
+  }
+}
+
+function locationParams(location) {
+  if (!location) return {}
+  return {
+    latitude: location.latitude,
+    longitude: location.longitude,
+  }
+}
+
+function resolveClientLocation() {
+  return new Promise((resolve) => {
+    if (!navigator.geolocation) {
+      resolve(null)
+      return
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        resolve({
+          latitude: Number(position.coords.latitude.toFixed(6)),
+          longitude: Number(position.coords.longitude.toFixed(6)),
+        })
+      },
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 300000 },
+    )
+  })
 }
