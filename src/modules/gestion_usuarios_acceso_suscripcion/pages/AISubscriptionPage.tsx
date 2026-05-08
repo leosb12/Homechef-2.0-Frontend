@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import AIAccessBanner from '../components/ai-subscription/AIAccessBanner'
 import AIPlanCard from '../components/ai-subscription/AIPlanCard'
@@ -8,6 +8,7 @@ import PaymentHistoryTable from '../components/ai-subscription/PaymentHistoryTab
 import SubscriptionStatusCard from '../components/ai-subscription/SubscriptionStatusCard'
 import SubscriptionSummaryModal from '../components/ai-subscription/SubscriptionSummaryModal'
 import { useAISubscription } from '../hooks/useAISubscription'
+import { confirmPaymentReturn } from '../services/aiSubscriptionApi'
 import { useAuthSession } from '../services/auth_session'
 
 type Tab = 'status' | 'payments' | 'audit'
@@ -19,8 +20,11 @@ export default function AISubscriptionPage() {
   const role = useAuthSession((state) => state.role)
   const [activeTab, setActiveTab] = useState<Tab>('status')
   const [cancelOpen, setCancelOpen] = useState(false)
+  const handledPaymentReturnRef = useRef('')
   const subscriptionState = useAISubscription()
   const paymentReturn = searchParams.get('payment') || ''
+  const stripeSessionId = searchParams.get('session_id') || ''
+  const coingateOrderId = searchParams.get('coingate_order_id') || ''
 
   useEffect(() => {
     if (!accessToken) navigate('/login', { replace: true })
@@ -51,18 +55,43 @@ export default function AISubscriptionPage() {
   } = subscriptionState
 
   useEffect(() => {
-    const isPaymentReturn = paymentReturn === 'stripe_success' || paymentReturn === 'coingate_success'
-    if (!isPaymentReturn || access?.can_use_ai) return undefined
+    const isStripeSuccess = paymentReturn === 'stripe_success'
+    const isCoinGateSuccess = paymentReturn === 'coingate_success' || (paymentReturn === 'success' && Boolean(coingateOrderId))
+    const isProviderCancel = paymentReturn === 'stripe_cancel' || paymentReturn === 'coingate_cancel' || paymentReturn === 'cancel'
+    const isPaymentReturn = isStripeSuccess || isCoinGateSuccess
+    if ((!isPaymentReturn && !isProviderCancel) || access?.can_use_ai) return undefined
+    const returnKey = `${paymentReturn}:${stripeSessionId}:${coingateOrderId}`
+    if (handledPaymentReturnRef.current === returnKey) return undefined
+    handledPaymentReturnRef.current = returnKey
 
-    let attempts = 0
-    const timer = window.setInterval(() => {
-      attempts += 1
-      void refresh({ silent: true })
-      if (attempts >= 24) window.clearInterval(timer)
-    }, 4000)
+    let cancelled = false
+    const provider = isStripeSuccess ? 'STRIPE_SANDBOX' : 'COINGATE_SANDBOX'
 
-    return () => window.clearInterval(timer)
-  }, [access?.can_use_ai, paymentReturn, refresh])
+    if (isProviderCancel) {
+      void cancelSubscription({
+        cancel_at_period_end: false,
+        reason: 'Pago cancelado desde el proveedor',
+      }).finally(() => {
+        if (!cancelled) void refresh({ silent: true })
+      })
+
+      return () => {
+        cancelled = true
+      }
+    }
+
+    void confirmPaymentReturn({
+      provider,
+      stripe_session_id: stripeSessionId,
+      coingate_order_id: coingateOrderId,
+    }).finally(() => {
+      if (!cancelled) void refresh({ silent: true })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [access?.can_use_ai, cancelSubscription, coingateOrderId, paymentReturn, refresh, stripeSessionId])
 
   if (loading) {
     return (
@@ -102,7 +131,7 @@ export default function AISubscriptionPage() {
         </div>
       ) : null}
 
-      {(paymentReturn === 'stripe_success' || paymentReturn === 'coingate_success') && !access?.can_use_ai ? (
+      {(paymentReturn === 'stripe_success' || paymentReturn === 'coingate_success' || paymentReturn === 'success') && !access?.can_use_ai ? (
         <div className="rounded-xl border p-4" style={{ borderColor: 'rgba(245,158,11,0.5)', backgroundColor: 'rgba(245,158,11,0.10)' }}>
           <p className="font-semibold">Pago recibido. Estamos confirmando la activacion de tu suscripcion.</p>
           <p className="text-sm" style={{ color: 'var(--muted)' }}>La activacion depende del webhook/callback del proveedor. Esta pantalla se actualiza automaticamente.</p>

@@ -11,6 +11,8 @@ import type {
   CancelSubscriptionRequest,
   ChangePlanRequest,
   PaymentCheckout,
+  PaymentReturnConfirmation,
+  PaymentReturnConfirmRequest,
   RenewRequest,
   SubscribeRequest,
   SubscriptionSummary,
@@ -75,6 +77,10 @@ export async function renew(payload: RenewRequest): Promise<PaymentCheckout> {
 
 export async function cancel(payload: CancelSubscriptionRequest): Promise<unknown> {
   return requestData<unknown>(() => iaApi.post('/api/ia/subscription/cancel/', payload))
+}
+
+export async function confirmPaymentReturn(payload: PaymentReturnConfirmRequest): Promise<PaymentReturnConfirmation> {
+  return requestData<PaymentReturnConfirmation>(() => iaApi.post('/api/ia/subscription/payments/confirm-return/', payload))
 }
 
 export async function getPayments(): Promise<AISubscriptionPayment[]> {

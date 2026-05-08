@@ -144,3 +144,15 @@ export interface CancelSubscriptionRequest {
   cancel_at_period_end: boolean
   reason: string
 }
+
+export interface PaymentReturnConfirmRequest {
+  provider?: PaymentProvider
+  stripe_session_id?: string
+  coingate_order_id?: string
+}
+
+export interface PaymentReturnConfirmation {
+  handled?: boolean
+  status?: AIPaymentStatus | string
+  provider?: AIPaymentProvider
+}

@@ -18,6 +18,8 @@ export default function SubscriptionStatusCard({ status, subscription, access, o
   const canUse = Boolean(access?.can_use_ai || status?.can_use_ai)
   const normalizedStatus = String(currentStatus || '').toUpperCase()
   const renewLabel = normalizedStatus === 'PENDING_PAYMENT' ? 'Reintentar pago' : 'Renovar'
+  const canCancel = subscription && (normalizedStatus === 'ACTIVE' || normalizedStatus === 'PENDING_PAYMENT' || normalizedStatus === 'SUSPENDED')
+  const cancelLabel = normalizedStatus === 'PENDING_PAYMENT' ? 'Cancelar pago' : 'Cancelar suscripcion'
 
   return (
     <article className="rounded-xl border p-4 space-y-4" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
@@ -49,14 +51,14 @@ export default function SubscriptionStatusCard({ status, subscription, access, o
         >
           {renewing ? 'Procesando...' : renewLabel}
         </button>
-        {subscription ? (
+        {canCancel ? (
           <button
             type="button"
             className="px-4 py-2 rounded-lg border font-semibold"
             style={{ borderColor: 'rgba(239,68,68,0.55)', color: '#ef4444' }}
             onClick={onCancel}
           >
-            Cancelar suscripcion
+            {cancelLabel}
           </button>
         ) : null}
       </div>
