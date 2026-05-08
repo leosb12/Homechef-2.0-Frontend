@@ -3,14 +3,14 @@ import type { PaymentProvider } from '../../types/aiSubscription'
 const PROVIDERS: Array<{ value: PaymentProvider; label: string; description: string; buttonLabel: string }> = [
   {
     value: 'STRIPE_SANDBOX',
-    label: 'Stripe Sandbox',
-    description: 'Checkout seguro de Stripe en entorno sandbox.',
+    label: 'Stripe',
+    description: 'Pago seguro con tarjeta mediante Stripe.',
     buttonLabel: 'Pagar con Stripe',
   },
   {
     value: 'COINGATE_SANDBOX',
-    label: 'CoinGate Sandbox',
-    description: 'Orden de pago cripto en entorno sandbox de CoinGate.',
+    label: 'CoinGate',
+    description: 'Pago con criptomonedas mediante CoinGate.',
     buttonLabel: 'Pagar con CoinGate',
   },
 ]
@@ -24,7 +24,7 @@ export default function PaymentProviderSelector({ value, onChange }: Props) {
   return (
     <section className="rounded-lg border p-3 space-y-3" style={{ borderColor: 'rgba(245,158,11,0.5)', backgroundColor: 'rgba(245,158,11,0.10)' }}>
       <div>
-        <p className="font-semibold">Proveedor de pago sandbox</p>
+        <p className="font-semibold">Proveedor de pago</p>
         <p className="text-sm break-words" style={{ color: 'var(--muted)' }}>La tarjeta o cripto se gestiona fuera de HomeChef. No guardamos datos sensibles.</p>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">

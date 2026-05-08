@@ -42,15 +42,17 @@ export default function SubscriptionStatusCard({ status, subscription, access, o
       </dl>
 
       <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className="px-4 py-2 rounded-lg border font-semibold"
-          style={{ borderColor: 'var(--line)' }}
-          onClick={onRenew}
-          disabled={renewing}
-        >
-          {renewing ? 'Procesando...' : renewLabel}
-        </button>
+        {subscription ? (
+          <button
+            type="button"
+            className="px-4 py-2 rounded-lg border font-semibold"
+            style={{ borderColor: 'var(--line)' }}
+            onClick={onRenew}
+            disabled={renewing}
+          >
+            {renewing ? 'Procesando...' : renewLabel}
+          </button>
+        ) : null}
         {canCancel ? (
           <button
             type="button"

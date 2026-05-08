@@ -84,6 +84,7 @@ export default function AISubscriptionPage() {
       provider,
       stripe_session_id: stripeSessionId,
       coingate_order_id: coingateOrderId,
+      trust_provider_return: true,
     }).finally(() => {
       if (!cancelled) void refresh({ silent: true })
     })

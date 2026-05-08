@@ -149,6 +149,7 @@ export interface PaymentReturnConfirmRequest {
   provider?: PaymentProvider
   stripe_session_id?: string
   coingate_order_id?: string
+  trust_provider_return?: boolean
 }
 
 export interface PaymentReturnConfirmation {

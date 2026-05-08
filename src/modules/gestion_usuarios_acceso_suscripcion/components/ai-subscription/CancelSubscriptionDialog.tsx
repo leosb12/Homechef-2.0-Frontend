@@ -9,7 +9,7 @@ interface Props {
 }
 
 export default function CancelSubscriptionDialog({ open, loading, onClose, onConfirm }: Props) {
-  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(true)
+  const [cancelAtPeriodEnd, setCancelAtPeriodEnd] = useState(false)
   const [reason, setReason] = useState('El cocinero decidio cancelar el plan')
   if (!open) return null
 

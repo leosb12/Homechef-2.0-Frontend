@@ -1,5 +1,6 @@
 import type { AISubscriptionPayment } from '../../types/aiSubscription'
 import { formatDate, formatMoney, labelize, statusColor } from './formatters'
+import { paymentProviderLabel } from './PaymentProviderSelector'
 
 interface Props {
   items: AISubscriptionPayment[]
@@ -27,7 +28,7 @@ export default function PaymentHistoryTable({ items }: Props) {
             return (
               <tr key={item.id || index} className="border-t" style={{ borderColor: 'var(--line)' }}>
                 <Td>{formatDate(item.created_at || item.date)}</Td>
-                <Td>{labelize(item.payment_provider || item.provider || 'Sin proveedor')}</Td>
+                <Td>{paymentProviderLabel(item.payment_provider || item.provider)}</Td>
                 <Td>{formatMoney(item.amount, item.currency || 'BOB')}</Td>
                 <Td><span style={{ color: statusColor(status) }} className="font-semibold">{labelize(status)}</span></Td>
                 <Td>{item.external_reference || '-'}</Td>

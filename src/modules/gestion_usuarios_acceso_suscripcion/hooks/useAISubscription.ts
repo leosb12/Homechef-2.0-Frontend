@@ -228,6 +228,9 @@ export function useAISubscription() {
     try {
       await cancel(payload)
       setNotice({ type: 'success', message: 'Suscripcion IA cancelada correctamente.' })
+      if (typeof window !== 'undefined' && window.location.search) {
+        window.history.replaceState({}, '', window.location.pathname)
+      }
       await refresh()
     } catch (err) {
       const failure = normalizeFailure(err)
