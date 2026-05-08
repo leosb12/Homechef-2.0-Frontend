@@ -21,6 +21,8 @@ import ChefMenuPage from '../../modules/gestion_cocinero/pages/ChefMenuPage'
 import ChefProfilePage from '../../modules/gestion_cocinero/pages/ChefProfilePage'
 import ChefAvailabilityPage from '../../modules/gestion_cocinero/pages/ChefAvailabilityPage'
 import AISubscriptionPage from '../../modules/gestion_usuarios_acceso_suscripcion/pages/AISubscriptionPage'
+import ChefIAHubPage from '../../modules/funciones_ia/pages/ChefIAHubPage'
+import ChefIAFunctionPage from '../../modules/funciones_ia/pages/ChefIAFunctionPage'
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 
 function Page({ title }) { return <div><h2 className="text-xl font-semibold">{title}</h2></div> }
@@ -62,9 +64,9 @@ export default function AppRouter() {
         <Route path="inventory" element={<Page title="Inventario" />} />
         <Route path="availability" element={<ChefAvailabilityPage />} />
         <Route path="orders" element={<Page title="Pedidos recibidos" />} />
-        <Route path="ai/assistant" element={<Page title="Asistente IA" />} />
-        <Route path="ai/vision" element={<Page title="Vision artificial" />} />
-        <Route path="ai/pricing" element={<Page title="Demanda y precios" />} />
+        <Route path="ai/assistant" element={<ChefIAHubPage />} />
+        <Route path="ai/:feature/use" element={<ChefIAFunctionPage />} />
+        <Route path="ai/:feature" element={<ChefIAFunctionPage />} />
         <Route path="ai-subscription" element={<AISubscriptionPage />} />
         <Route path="subscription" element={<Navigate to="/chef/ai-subscription" replace />} />
         <Route path="profile" element={<ChefProfilePage />} />
