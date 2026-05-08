@@ -20,6 +20,24 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status
+    if ((status === 401 || status === 403) && typeof window !== 'undefined') {
+      localStorage.removeItem('homechef_access_token')
+      localStorage.removeItem('homechef_role')
+      localStorage.removeItem('homechef_user')
+      invalidateApiCache()
+
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.replace('/login')
+      }
+    }
+    return Promise.reject(error)
+  },
+)
+
 export async function cachedGet(url, config = {}, options = {}) {
   const ttl = options.ttl ?? DEFAULT_CACHE_TTL
   const key = buildCacheKey(url, config)
