@@ -17,7 +17,7 @@ import type {
   SubscriptionSummaryRequest,
 } from '../types/aiSubscription'
 
-const IA_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'
+const IA_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || apiOriginFrom(import.meta.env.VITE_API_URL) || 'http://localhost:8000'
 
 const iaApi = axios.create({
   baseURL: IA_API_BASE_URL,
@@ -119,4 +119,9 @@ function buildFailure(message: string, error?: ApiErrorResponse['error'], status
   failure.details = error?.details
   failure.status = status
   return failure
+}
+
+function apiOriginFrom(apiUrl?: string) {
+  if (!apiUrl) return ''
+  return apiUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '')
 }
