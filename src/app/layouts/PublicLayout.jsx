@@ -3,6 +3,7 @@ import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { logoutUser } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_service'
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 import { useThemeSession } from '../../shared/services/theme_session'
+import SyncStatusBadge from '../../shared/components/SyncStatusBadge'
 
 export default function PublicLayout() {
   const location = useLocation()
@@ -52,6 +53,7 @@ export default function PublicLayout() {
           <div className="mx-auto max-w-6xl px-4 py-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <Link to="/" className="text-xl font-bold">HomeChef</Link>
             <nav className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+              {isAuthenticated ? <SyncStatusBadge /> : null}
               <button
                 aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
                 title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}

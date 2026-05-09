@@ -4,6 +4,11 @@ import { BrowserRouter } from 'react-router-dom'
 import AppRouter from './app/router/AppRouter'
 import './index.css'
 import './shared/services/theme_session'
+import { registerServiceWorker } from './shared/services/pwa'
+import { startConnectivitySync } from './shared/services/sync_service'
+
+registerServiceWorker()
+startConnectivitySync()
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

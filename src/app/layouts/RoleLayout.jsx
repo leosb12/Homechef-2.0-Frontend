@@ -4,6 +4,8 @@ import { logoutUser } from '../../modules/gestion_usuarios_acceso_suscripcion/se
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 import { useThemeSession } from '../../shared/services/theme_session'
 import LoadingButton from '../../modules/gestion_cocinero/components/LoadingButton'
+import SyncStatusBadge from '../../shared/components/SyncStatusBadge'
+import OfflineConflictsPanel from '../../shared/components/OfflineConflictsPanel'
 
 export default function RoleLayout({ title, links }) {
   const navigate = useNavigate()
@@ -130,6 +132,7 @@ export default function RoleLayout({ title, links }) {
               {user.first_name} {user.last_name || ''}
             </span>
           )}
+          <SyncStatusBadge />
           <button
             aria-label={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
             title={theme === 'dark' ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
@@ -152,6 +155,7 @@ export default function RoleLayout({ title, links }) {
           </LoadingButton>
         </header>
         <main className="p-4 sm:p-6 lg:p-8">
+          <OfflineConflictsPanel />
           <Outlet />
         </main>
       </div>

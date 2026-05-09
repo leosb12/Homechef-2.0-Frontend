@@ -1,0 +1,19 @@
+{
+  "name": "HomeChef",
+  "short_name": "HomeChef",
+  "description": "Marketplace HomeChef con soporte offline-first.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#070b1b",
+  "theme_color": "#7c3aed",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
