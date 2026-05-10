@@ -30,14 +30,12 @@ export default function PublicLayout() {
       const type = params.get('type')
       
       if (type === 'recovery') {
-        // Limpiar el hash y redirigir a reset-password
-        window.history.replaceState(null, '', window.location.pathname)
-        navigate('/reset-password', { replace: true })
+        navigate(`/reset-password${window.location.hash}`, { replace: true })
         return
       }
     }
 
-    }, [])
+  }, [navigate])
 
   const handleLogout = () => {
     const token = accessToken

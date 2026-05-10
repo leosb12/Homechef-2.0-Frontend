@@ -30,13 +30,18 @@ api.interceptors.response.use(
       localStorage.removeItem('homechef_user')
       invalidateApiCache()
 
-      if (!window.location.pathname.startsWith('/login')) {
+      if (shouldRedirectToLogin(window.location.pathname)) {
         window.location.replace('/login')
       }
     }
     return Promise.reject(error)
   },
 )
+
+function shouldRedirectToLogin(pathname) {
+  const publicAuthPaths = ['/login', '/register', '/recover-password', '/reset-password']
+  return !publicAuthPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+}
 
 export async function cachedGet(url, config = {}, options = {}) {
   const ttl = options.ttl ?? DEFAULT_CACHE_TTL

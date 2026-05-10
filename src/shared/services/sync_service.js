@@ -42,13 +42,18 @@ export function startConnectivitySync() {
   window.addEventListener('homechef:offline-conflicts-changed', refreshSyncCounts)
 
   refresh()
-  if (navigator.onLine) void syncNow()
+  if (navigator.onLine && hasAuthSession()) void syncNow()
 }
 
 export async function syncNow() {
   if (syncPromise) return syncPromise
 
   syncPromise = (async () => {
+    if (!hasAuthSession()) {
+      useSyncStore.getState().setSyncStatus('idle')
+      return
+    }
+
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       useSyncStore.getState().setSyncStatus('offline')
       return
@@ -74,6 +79,11 @@ export async function syncNow() {
   })()
 
   return syncPromise
+}
+
+function hasAuthSession() {
+  if (typeof window === 'undefined') return false
+  return Boolean(localStorage.getItem('homechef_access_token'))
 }
 
 export async function pushPendingOperations() {
