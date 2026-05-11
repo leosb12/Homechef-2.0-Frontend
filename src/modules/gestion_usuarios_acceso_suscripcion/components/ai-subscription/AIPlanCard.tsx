@@ -1,5 +1,6 @@
 import type { AISubscriptionPlan } from '../../types/aiSubscription'
 import { formatMoney } from './formatters'
+import { aiFeatureItems } from './aiPlanFeatures'
 
 interface Props {
   plan: AISubscriptionPlan
@@ -36,10 +37,21 @@ export default function AIPlanCard({ plan, selected = false, onSelect }: Props) 
       <div className="grid grid-cols-2 gap-2 text-sm">
         <Metric label="Consultas IA" value={limitText(plan.ai_query_limit)} />
         <Metric label="Generaciones" value={limitText(plan.ai_generation_limit)} />
-        <Metric label="Vision" value={plan.vision_enabled ? 'Si' : 'No'} />
-        <Metric label="Precios" value={plan.pricing_support_enabled ? 'Si' : 'No'} />
-        <Metric label="Produccion" value={plan.production_recommendations_enabled ? 'Si' : 'No'} />
-        <Metric label="Publicacion" value={plan.publishing_support_enabled ? 'Si' : 'No'} />
+      </div>
+
+      <div className="space-y-2 text-sm">
+        <p className="font-semibold">Funciones IA incluidas</p>
+        {aiFeatureItems.map((feature) => {
+          const included = feature.included(plan)
+          return (
+            <div key={feature.id} className="flex items-start gap-2">
+              <span aria-hidden="true" className={included ? 'text-emerald-500' : 'text-slate-400'}>
+                {included ? '✓' : '—'}
+              </span>
+              <span style={{ color: included ? 'var(--text)' : 'var(--muted)' }}>{feature.label}</span>
+            </div>
+          )
+        })}
       </div>
 
       {benefits.length ? (

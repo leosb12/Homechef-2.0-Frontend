@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import type { AISubscriptionPlan, PaymentProvider, SubscriptionOperation, SubscriptionSummary } from '../../types/aiSubscription'
 import { formatDate, formatMoney } from './formatters'
 import PaymentProviderSelector, { paymentProviderButtonLabel } from './PaymentProviderSelector'
+import { aiFeatureItems } from './aiPlanFeatures'
 
 interface Props {
   loading: boolean
@@ -61,14 +62,30 @@ export default function SubscriptionSummaryModal({ loading, actionLoading, opera
               </div>
 
               <div className="rounded-lg border p-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
-                <p className="font-semibold mb-2">Limites y beneficios</p>
+                <p className="font-semibold mb-2">Límites y funciones IA</p>
                 <div className="grid sm:grid-cols-2 gap-2 text-sm break-words">
                   <span>Consultas IA: {String(effectivePlan.ai_query_limit ?? 'Ilimitado')}</span>
                   <span>Generaciones: {String(effectivePlan.ai_generation_limit ?? 'Ilimitado')}</span>
-                  <span>Vision artificial: {effectivePlan.vision_enabled ? 'Incluida' : 'No incluida'}</span>
-                  <span>Soporte de precios: {effectivePlan.pricing_support_enabled ? 'Incluido' : 'No incluido'}</span>
                 </div>
-                {benefits.length ? <ul className="mt-3 text-sm space-y-1 break-words">{benefits.map((item, index) => <li key={`${toDisplayText(item)}-${index}`}>- {toDisplayText(item)}</li>)}</ul> : null}
+                <div className="mt-3 grid sm:grid-cols-2 gap-2 text-sm break-words">
+                  {aiFeatureItems.map((feature) => {
+                    const included = feature.included(effectivePlan)
+                    return (
+                      <div key={feature.id} className="flex items-start gap-2">
+                        <span aria-hidden="true" className={included ? 'text-emerald-500' : 'text-slate-400'}>
+                          {included ? '✓' : '—'}
+                        </span>
+                        <span style={{ color: included ? 'var(--text)' : 'var(--muted)' }}>{feature.label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+                {benefits.length ? (
+                  <div className="mt-3">
+                    <p className="font-semibold mb-1">Beneficios del plan</p>
+                    <ul className="text-sm space-y-1 break-words">{benefits.map((item, index) => <li key={`${toDisplayText(item)}-${index}`}>- {toDisplayText(item)}</li>)}</ul>
+                  </div>
+                ) : null}
               </div>
 
               {conditions.length ? (
@@ -115,18 +132,18 @@ function Info({ label, value }: { label: string; value: string }) {
 }
 
 function formatValidity(value: unknown) {
-  if (typeof value === 'number') return `${value} dias`
+  if (typeof value === 'number') return `${value} días`
   if (typeof value === 'string' && value.trim()) return value
   if (value && typeof value === 'object') {
     const validity = value as { duration_days?: unknown; auto_renew?: unknown; cancel_policy?: unknown }
     const parts = [
-      typeof validity.duration_days === 'number' ? `${validity.duration_days} dias` : null,
-      typeof validity.auto_renew === 'boolean' ? `Renovacion ${validity.auto_renew ? 'automatica' : 'manual'}` : null,
+      typeof validity.duration_days === 'number' ? `${validity.duration_days} días` : null,
+      typeof validity.auto_renew === 'boolean' ? `Renovación ${validity.auto_renew ? 'automática' : 'manual'}` : null,
       typeof validity.cancel_policy === 'string' ? validity.cancel_policy : null,
     ]
-    return parts.filter(Boolean).join(' | ') || '30 dias'
+    return parts.filter(Boolean).join(' | ') || '30 días'
   }
-  return '30 dias'
+  return '30 días'
 }
 
 function toDisplayText(value: unknown) {

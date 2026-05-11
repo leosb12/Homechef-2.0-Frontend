@@ -1,7 +1,10 @@
 import axios, { AxiosError } from 'axios'
 import type { UsarFuncionIARequest, UsarFuncionIAResponse } from '../types/iaAccess'
 
-const IA_API_BASE_URL = import.meta.env.VITE_API_BASE_URL || apiOriginFrom(import.meta.env.VITE_API_URL) || 'http://localhost:8000'
+const IA_API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  apiOriginFrom(import.meta.env.VITE_API_URL) ||
+  'https://homechef-2-0-backend.onrender.com'
 
 const iaAccessApi = axios.create({
   baseURL: IA_API_BASE_URL,

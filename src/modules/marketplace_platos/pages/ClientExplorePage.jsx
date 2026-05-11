@@ -22,6 +22,7 @@ export default function ClientExplorePage() {
   const [cuisineType, setCuisineType] = useState('')
   const [dietType, setDietType] = useState('')
   const [locationAvailable, setLocationAvailable] = useState('true')
+  const [maxDistanceKm, setMaxDistanceKm] = useState('')
   const [clientLocation, setClientLocation] = useState(null)
   const [isTypingSearch, setIsTypingSearch] = useState(false)
   const [favoriteDishIds, setFavoriteDishIds] = useState(new Set())
@@ -36,7 +37,7 @@ export default function ClientExplorePage() {
       const response = await fetchClientExplore(filters)
       const rawDishes = response.dishes || []
       const favoriteSet = favoriteIdsOverride || favoriteDishIds
-      const withFavorites = rawDishes.map((dish) => ({
+      const withFavorites = applyDistanceFilter(rawDishes, filters.max_distance_km, filters.sort).map((dish) => ({
         ...dish,
         is_favorite: favoriteSet.has(String(dish.id)),
       }))
@@ -127,6 +128,7 @@ export default function ClientExplorePage() {
     setCuisineType('')
     setDietType('')
     setLocationAvailable('true')
+    setMaxDistanceKm('')
     loadExplore(withLocationParams({}, clientLocation))
   }
 
@@ -189,6 +191,7 @@ export default function ClientExplorePage() {
     cuisine_type: cuisineType,
     diet_type: dietType,
     location_available: clientLocation ? locationAvailable : 'false',
+    max_distance_km: clientLocation && locationAvailable === 'true' ? maxDistanceKm : '',
   })
 
   return (
@@ -239,6 +242,7 @@ export default function ClientExplorePage() {
           <option value="price_asc">Precio menor a mayor</option>
           <option value="price_desc">Precio mayor a menor</option>
           <option value="popular_desc">Popularidad</option>
+          <option value="distance_asc" disabled={!clientLocation}>Mas cercanos</option>
           <option value="rating_desc">Calificación</option>
         </select>
         <input
@@ -274,9 +278,34 @@ export default function ClientExplorePage() {
           <option value="regular">Regular</option>
           <option value="vegetariano">Vegetariano</option>
         </select>
-        <select value={locationAvailable} onChange={(e) => setLocationAvailable(e.target.value)} className="filter-select border rounded-xl px-3 py-2" style={{ borderColor: 'var(--line)' }}>
+        <select
+          value={locationAvailable}
+          onChange={(e) => {
+            setLocationAvailable(e.target.value)
+            if (e.target.value === 'false') setMaxDistanceKm('')
+          }}
+          className="filter-select border rounded-xl px-3 py-2"
+          style={{ borderColor: 'var(--line)' }}
+        >
           <option value="true">Ubicación disponible</option>
           <option value="false">Sin ubicacion</option>
+        </select>
+        <select
+          value={maxDistanceKm}
+          onChange={(e) => {
+            setMaxDistanceKm(e.target.value)
+            if (e.target.value) setLocationAvailable('true')
+          }}
+          disabled={locationAvailable === 'false'}
+          className="filter-select border rounded-xl px-3 py-2 disabled:opacity-60"
+          style={{ borderColor: 'var(--line)' }}
+        >
+          <option value="">Cercania: cualquier distancia</option>
+          <option value="1">Hasta 1 km</option>
+          <option value="3">Hasta 3 km</option>
+          <option value="5">Hasta 5 km</option>
+          <option value="10">Hasta 10 km</option>
+          <option value="20">Hasta 20 km</option>
         </select>
         <button className="px-4 py-2 rounded-xl text-white font-semibold" style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}>
           Aplicar filtros
@@ -360,6 +389,30 @@ export default function ClientExplorePage() {
       )}
     </section>
   )
+}
+
+function applyDistanceFilter(dishes, maxDistanceKm, sort) {
+  const maxDistance = Number(maxDistanceKm)
+  let items = [...dishes]
+
+  if (Number.isFinite(maxDistance) && maxDistance > 0) {
+    items = items.filter((dish) => {
+      const distance = Number(dish.distance_km)
+      return Number.isFinite(distance) && distance <= maxDistance
+    })
+  }
+
+  if (sort === 'distance_asc') {
+    items.sort((a, b) => {
+      const distanceA = Number(a.distance_km)
+      const distanceB = Number(b.distance_km)
+      const safeDistanceA = Number.isFinite(distanceA) ? distanceA : Number.POSITIVE_INFINITY
+      const safeDistanceB = Number.isFinite(distanceB) ? distanceB : Number.POSITIVE_INFINITY
+      return safeDistanceA - safeDistanceB
+    })
+  }
+
+  return items
 }
 
 function withLocationParams(filters, location) {

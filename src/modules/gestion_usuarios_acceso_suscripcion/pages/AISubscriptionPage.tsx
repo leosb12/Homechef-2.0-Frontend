@@ -7,9 +7,11 @@ import CancelSubscriptionDialog from '../components/ai-subscription/CancelSubscr
 import PaymentHistoryTable from '../components/ai-subscription/PaymentHistoryTable'
 import SubscriptionStatusCard from '../components/ai-subscription/SubscriptionStatusCard'
 import SubscriptionSummaryModal from '../components/ai-subscription/SubscriptionSummaryModal'
+import { aiFeatureItems } from '../components/ai-subscription/aiPlanFeatures'
 import { useAISubscription } from '../hooks/useAISubscription'
 import { confirmPaymentReturn } from '../services/aiSubscriptionApi'
 import { useAuthSession } from '../services/auth_session'
+import type { AISubscriptionPlan } from '../types/aiSubscription'
 
 type Tab = 'status' | 'payments' | 'audit'
 
@@ -180,7 +182,11 @@ export default function AISubscriptionPage() {
             </section>
 
             <aside className="space-y-3">
-              <AIFeatureLock canUseAI={Boolean(access?.can_use_ai)} reason={access?.reason || access?.message} />
+              <AIFeatureLock
+                canUseAI={Boolean(access?.can_use_ai)}
+                plan={subscription?.plan || status?.plan || null}
+                reason={access?.reason || access?.message}
+              />
             </aside>
           </div>
         </div>
@@ -252,18 +258,21 @@ function ErrorState({ error, onRetry }: { error: Error & { code?: string; detail
   )
 }
 
-function AIFeatureLock({ canUseAI, reason }: { canUseAI: boolean; reason?: string }) {
-  const items = ['Asistente IA', 'Vision artificial', 'Recomendaciones de produccion', 'Soporte de precios', 'Soporte de publicacion']
+function AIFeatureLock({ canUseAI, plan, reason }: { canUseAI: boolean; plan?: AISubscriptionPlan | null; reason?: string }) {
   return (
     <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
       <h2 className="text-xl font-bold">Funciones IA</h2>
       <div className="space-y-2">
-        {items.map((item) => (
-          <div key={item} className="flex items-center justify-between rounded-lg border p-2" style={{ borderColor: 'var(--line)', backgroundColor: canUseAI ? 'transparent' : 'var(--panel-soft)' }}>
-            <span>{item}</span>
-            <span className="text-sm font-semibold" style={{ color: canUseAI ? '#10b981' : '#ef4444' }}>{canUseAI ? 'Habilitada' : 'Bloqueada'}</span>
-          </div>
-        ))}
+        {aiFeatureItems.map((feature) => {
+          const included = Boolean(plan && feature.included(plan))
+          const enabled = canUseAI && included
+          return (
+            <div key={feature.id} className="flex items-center justify-between rounded-lg border p-2" style={{ borderColor: 'var(--line)', backgroundColor: enabled ? 'transparent' : 'var(--panel-soft)' }}>
+              <span>{feature.label}</span>
+              <span className="text-sm font-semibold" style={{ color: enabled ? '#10b981' : '#ef4444' }}>{enabled ? 'Habilitada' : included ? 'Bloqueada' : 'No incluida'}</span>
+            </div>
+          )
+        })}
       </div>
       {!canUseAI ? <p className="text-sm" style={{ color: 'var(--muted)' }}>{reason || 'Se requiere una suscripcion activa.'}</p> : null}
     </div>
