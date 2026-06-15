@@ -2,6 +2,7 @@ import RoleLayout from './RoleLayout'
 
 const links = [
   { to: '/chef/dashboard', label: 'Resumen general', icon: <ChefSidebarIcon type="dashboard" /> },
+  { to: '/chef/finances', label: 'Mis ingresos', icon: <ChefSidebarIcon type="wallet" /> },
   { to: '/chef/dishes', label: 'Mis platos', icon: <ChefSidebarIcon type="dishes" /> },
   { to: '/chef/menu', label: 'Menu del dia', icon: <ChefSidebarIcon type="menuBook" /> },
   { to: '/chef/inventory', label: 'Inventario', icon: <ChefSidebarIcon type="inventory" /> },
@@ -15,37 +16,37 @@ const links = [
 
 const sidebarFooter = (
   <div
-    className="rounded-[22px] border p-5"
+    className="rounded-2xl border p-4 flex flex-col gap-3"
     style={{
       borderColor: 'rgba(124,58,237,.14)',
       background:
         'linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, white 8%), color-mix(in srgb, var(--panel-soft) 88%, var(--brand) 12%))',
-      boxShadow: '0 18px 36px rgba(15, 23, 42, 0.08)',
     }}
   >
-    <div
-      className="grid h-12 w-12 place-items-center rounded-full text-white"
-      style={{
-        background:
-          'linear-gradient(180deg, rgba(124,58,237,1), rgba(109,40,217,1))',
-      }}
-    >
-      <ChefSidebarIcon type="hat" stroke="white" />
+    <div className="flex items-center gap-3">
+      <div
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white"
+        style={{
+          background: 'linear-gradient(180deg, rgba(124,58,237,1), rgba(109,40,217,1))',
+        }}
+      >
+        <ChefSidebarIcon type="hat" stroke="white" />
+      </div>
+      <div>
+        <p className="font-bold text-sm leading-tight">Cocina activa</p>
+        <p className="text-xs" style={{ color: 'var(--muted)' }}>Operacion al dia</p>
+      </div>
     </div>
-    <p className="mt-4 text-lg font-bold">Tu cocina lista para vender</p>
-    <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-      Revisa platos, horarios y pedidos para mantener tu operacion al dia.
-    </p>
     <button
       type="button"
-      className="mt-5 w-full rounded-xl border px-4 py-3 font-semibold"
+      className="w-full rounded-lg border py-2 text-sm font-semibold transition hover:opacity-80"
       style={{
         borderColor: 'rgba(124,58,237,.22)',
         color: '#6d28d9',
         backgroundColor: 'color-mix(in srgb, var(--panel) 88%, white 12%)',
       }}
     >
-      Ver panel de cocina
+      Ver panel
     </button>
   </div>
 )
@@ -144,6 +145,14 @@ function ChefSidebarIcon({ type, stroke = 'currentColor' }) {
           <rect x="3" y="6" width="18" height="12" rx="2" />
           <path d="M3 10h18" />
           <path d="M7 15h3" />
+        </svg>
+      )
+    case 'wallet':
+      return (
+        <svg {...common}>
+          <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+          <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+          <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
         </svg>
       )
     case 'chef':

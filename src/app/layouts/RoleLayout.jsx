@@ -138,13 +138,13 @@ export default function RoleLayout({
           </button>
         </div>
 
-        <nav className="space-y-2 pt-4">
+        <nav className="space-y-2 pt-4 flex-1 overflow-y-auto overflow-x-hidden min-h-0 pr-2 pb-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[rgba(148,163,184,0.3)] hover:[&::-webkit-scrollbar-thumb]:bg-[rgba(148,163,184,0.5)]">
           {links.map((item) => {
             const active = location.pathname === item.to
             return (
               <Link
                 key={item.to}
-                className="flex items-center gap-3 rounded-2xl px-4 py-3 transition"
+                className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition"
                 style={{
                   color: active ? '#6d28d9' : 'var(--text)',
                   backgroundColor: active ? 'rgba(124,58,237,.10)' : 'transparent',
@@ -168,13 +168,14 @@ export default function RoleLayout({
                 to={item.to}
               >
                 <span
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+                  className="grid shrink-0 place-items-center rounded-lg transition-colors"
                   style={{
+                    width: '32px',
+                    height: '32px',
                     backgroundColor: active
                       ? 'rgba(124,58,237,.12)'
-                      : isLight
-                        ? 'rgba(148,163,184,.08)'
-                        : 'rgba(30,41,59,.72)',
+                      : 'transparent',
+                    color: active ? '#6d28d9' : 'var(--muted)',
                   }}
                 >
                   {item.icon}

@@ -2,28 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { uploadFile } from '../../../shared/services/uploads'
 import { createChefDish, deleteChefDish, fetchChefDishes, updateChefDish } from '../services/chef_service'
 import LoadingButton from '../components/LoadingButton'
-
-const ALERGENOS = [
-  'GLUTEN', 'LACTEOS', 'HUEVO', 'MANI', 'FRUTOS_SECOS', 'SOYA', 'PESCADO', 'MARISCOS',
-  'CRUSTACEOS', 'MOLUSCOS', 'SESAMO', 'MOSTAZA', 'APIO', 'SULFITOS', 'MAIZ', 'AJO', 'CEBOLLA', 'PICANTE',
-]
-
-const INGREDIENTES = [
-  'CARNE_RES', 'POLLO', 'CERDO', 'CHARQUE', 'CHORIZO', 'PESCADO', 'CAMARON', 'MARISCOS',
-  'HUEVO', 'QUESO', 'LECHE', 'CREMA', 'ARROZ', 'FIDEO', 'PAN', 'HARINA', 'QUINUA', 'PAPA',
-  'YUCA', 'CAMOTE', 'PLATANO', 'CHOCLO', 'MAIZ', 'TOMATE', 'CEBOLLA', 'ZANAHORIA', 'LECHUGA',
-  'ARVEJA', 'VAINITA', 'BROCOLI', 'PIMENTON', 'LOCOTO', 'AJI', 'MANI', 'GARBANZO', 'LENTEJA',
-  'FRIJOL', 'AJO', 'PEREJIL', 'CILANTRO', 'OREGANO', 'COMINO', 'PIMIENTA', 'ACEITE', 'SAL', 'AZUCAR', 'LIMON',
-]
-
-const ETIQUETAS = [
-  'CASERO', 'TRADICIONAL', 'ARTESANAL', 'POPULAR', 'RECOMENDADO', 'DESTACADO', 'NUEVO',
-  'ECONOMICO', 'PROMOCION', 'PREMIUM', 'RAPIDO', 'FRESCO', 'RECIEN_HECHO', 'PARA_COMPARTIR',
-  'PORCION_GRANDE', 'DESAYUNO', 'ALMUERZO', 'CENA', 'MERIENDA', 'PICANTE', 'NO_PICANTE',
-  'DULCE', 'SALADO', 'AGRIDULCE', 'VEGETARIANO', 'VEGANO', 'SIN_GLUTEN', 'SIN_LACTEOS',
-  'ALTO_EN_PROTEINA', 'BAJO_EN_GRASA', 'SOPA', 'PLATO_FUERTE', 'ENTRADA', 'POSTRE', 'BEBIDA',
-  'SNACK', 'BOLIVIANO', 'COCHABAMBINO', 'PACENO', 'CRUCENO', 'TARIJENO',
-]
+import SearchableSelect from '../components/SearchableSelect'
+import { ALERGENOS, INGREDIENTES, ETIQUETAS } from '../constants'
 
 const STATUS_LABELS = {
   published: 'Publicado',
@@ -62,7 +42,7 @@ function normalizeDish(dish) {
     price: String(dish.price ?? ''),
     portions: String(dish.portions ?? ''),
     schedule: dish.schedule || '',
-    ingredients: Array.isArray(dish.ingredients) ? dish.ingredients : [],
+    ingredients: Array.isArray(dish.ingredients) ? dish.ingredients.map(i => typeof i === 'string' ? { name: i, quantity: 1, unit: 'u' } : i) : [],
     tags: Array.isArray(dish.tags) ? dish.tags : [],
     allergens: Array.isArray(dish.allergens) ? dish.allergens : [],
     image_url: dish.image_url || '',
@@ -397,7 +377,7 @@ export default function ChefDishesPage() {
               <Input label="Nombre del plato" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
               <div className="grid sm:grid-cols-2 gap-3">
                 <Input label="Precio (Bs)" type="number" min="1" step="0.01" value={form.price} onChange={(v) => setForm({ ...form, price: v })} />
-                <Input label="Porciones" type="number" min="1" value={form.portions} onChange={(v) => setForm({ ...form, portions: v })} />
+                <Input label="Porciones" type="number" min="0" value={form.portions} onChange={(v) => setForm({ ...form, portions: v })} />
               </div>
               <Input label="Horario disponible" value={form.schedule} onChange={(v) => setForm({ ...form, schedule: v })} placeholder="11:00 - 15:00" />
             </div>
@@ -406,11 +386,11 @@ export default function ChefDishesPage() {
           <TextArea label="Descripción" value={form.description} onChange={(v) => setForm({ ...form, description: v })} />
 
           <div className="grid md:grid-cols-3 gap-3">
-            <EnumSelector
+            <IngredientsSelector
               label="Ingredientes"
               options={INGREDIENTES}
               selected={form.ingredients}
-              onToggle={(v) => toggleArrayValue('ingredients', v)}
+              onChange={(v) => setForm({ ...form, ingredients: v })}
             />
             <EnumSelector
               label="Etiquetas"
@@ -489,36 +469,91 @@ function TabButton({ active, onClick, label }) {
 }
 
 function EnumSelector({ label, options, selected, onToggle }) {
+  const availableOptions = options.filter((x) => !selected.includes(x))
+
   return (
     <div className="rounded-xl border p-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
       <p className="font-semibold mb-2">{label}</p>
-      <select
-        className="h-10 w-full rounded-lg border px-2 text-sm"
-        style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
-        onChange={(e) => {
-          const val = e.target.value
-          if (val) onToggle(val)
-          e.target.value = ''
-        }}
-        defaultValue=""
-      >
-        <option value="" disabled>Seleccionar...</option>
-        {options.filter((x) => !selected.includes(x)).map((opt) => (
-          <option key={opt} value={opt}>{prettyLabel(opt)}</option>
-        ))}
-      </select>
+      <SearchableSelect
+        options={availableOptions}
+        value=""
+        onChange={(val) => val && onToggle(val)}
+        placeholder="Seleccionar..."
+        formatOption={prettyLabel}
+      />
       <div className="flex flex-wrap gap-2 mt-3">
         {selected.map((item) => (
           <button
             key={item}
             type="button"
-            className="text-xs px-2 py-1 rounded-full border"
+            className="text-xs px-2 py-1 rounded-full border transition-colors hover:bg-red-50"
             style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
             onClick={() => onToggle(item)}
             title="Quitar"
           >
             {prettyLabel(item)} ✕
           </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function IngredientsSelector({ label, options, selected, onChange }) {
+  const selectedNames = selected.map(s => s.name)
+  
+  const handleAdd = (name) => {
+    onChange([...selected, { name, quantity: 1, unit: 'u' }])
+  }
+  
+  const handleRemove = (name) => {
+    onChange(selected.filter(s => s.name !== name))
+  }
+  
+  const handleUpdate = (name, field, value) => {
+    onChange(selected.map(s => s.name === name ? { ...s, [field]: value } : s))
+  }
+
+  const availableOptions = options.filter((x) => !selectedNames.includes(x))
+
+  return (
+    <div className="rounded-xl border p-3 flex flex-col gap-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+      <p className="font-semibold">{label}</p>
+      <SearchableSelect
+        options={availableOptions}
+        value=""
+        onChange={(val) => val && handleAdd(val)}
+        placeholder="Añadir ingrediente..."
+        formatOption={prettyLabel}
+      />
+      <div className="flex flex-col gap-2 max-h-48 overflow-y-auto pr-1">
+        {selected.map((item) => (
+          <div key={item.name} className="flex flex-wrap items-center gap-2 p-2 rounded-lg border text-sm" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
+            <span className="font-medium flex-1 min-w-[100px]">{prettyLabel(item.name)}</span>
+            <input
+              type="number"
+              min="0.01"
+              step="any"
+              className="w-20 px-2 py-1 rounded border bg-transparent"
+              style={{ borderColor: 'var(--line)' }}
+              value={item.quantity}
+              onChange={(e) => handleUpdate(item.name, 'quantity', e.target.value)}
+              placeholder="Cant."
+            />
+            <select
+              className="w-20 px-2 py-1 rounded border bg-transparent"
+              style={{ borderColor: 'var(--line)' }}
+              value={item.unit}
+              onChange={(e) => handleUpdate(item.name, 'unit', e.target.value)}
+            >
+              <option value="kg">kg</option>
+              <option value="g">g</option>
+              <option value="L">Litros</option>
+              <option value="ml">ml</option>
+              <option value="u">Unid.</option>
+            </select>
+            <button type="button" className="text-red-500 font-bold px-2" onClick={() => handleRemove(item.name)} title="Quitar">✕</button>
+          </div>
         ))}
       </div>
     </div>

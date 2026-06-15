@@ -165,3 +165,65 @@ function invalidateChefKitchenCache() {
   invalidateApiCache('/chef/menu/')
   invalidateApiCache('/marketplace/')
 }
+
+export async function fetchChefInventory() {
+  return readListWithOfflineFallback('chef_inventory', () => cachedGet('/chef/inventory/'))
+}
+
+export async function createChefInventoryItem(payload) {
+  const localId = `temp-inv-${crypto.randomUUID()}`
+  return mutateOfflineFirst(
+    'chef_inventory',
+    'CREATE',
+    payload,
+    { local_id: localId, server_id: null },
+    async () => {
+      const { data } = await api.post('/chef/inventory/', payload)
+      invalidateApiCache('/chef/inventory/')
+      return data
+    },
+    (data) => saveLocalUpsert('chef_inventory', data, data.id || localId),
+  )
+}
+
+export async function updateChefInventoryItem(itemId, payload) {
+  return mutateOfflineFirst(
+    'chef_inventory',
+    'UPDATE',
+    payload,
+    { local_id: String(itemId), server_id: itemId },
+    async () => {
+      const { data } = await api.put(`/chef/inventory/${itemId}/`, payload)
+      invalidateApiCache('/chef/inventory/')
+      return data
+    },
+    (data) => saveLocalUpsert('chef_inventory', data, itemId),
+  )
+}
+
+export async function deleteChefInventoryItem(itemId) {
+  return mutateOfflineFirst(
+    'chef_inventory',
+    'DELETE',
+    { id: itemId },
+    { local_id: String(itemId), server_id: itemId },
+    async () => {
+      const { data } = await api.delete(`/chef/inventory/${itemId}/`)
+      invalidateApiCache('/chef/inventory/')
+      return data
+    },
+    () => saveLocalDelete('chef_inventory', itemId),
+  )
+}
+
+export async function fetchChefFinancesSummary(startDate, endDate) {
+  let url = '/chef/finances/summary/'
+  const params = new URLSearchParams()
+  if (startDate) params.append('start_date', startDate)
+  if (endDate) params.append('end_date', endDate)
+  
+  const query = params.toString()
+  if (query) url += `?${query}`
+  
+  return cachedGet(url)
+}

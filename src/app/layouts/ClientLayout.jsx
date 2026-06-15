@@ -11,30 +11,30 @@ const links = [
 
 const sidebarFooter = (
   <div
-    className="rounded-[22px] border p-5"
+    className="rounded-2xl border p-4 flex flex-col gap-3"
     style={{
       borderColor: 'rgba(124,58,237,.14)',
       background:
         'linear-gradient(180deg, color-mix(in srgb, var(--panel) 92%, white 8%), color-mix(in srgb, var(--panel-soft) 88%, var(--brand) 12%))',
-      boxShadow: '0 18px 36px rgba(15, 23, 42, 0.08)',
     }}
   >
-    <div
-      className="grid h-12 w-12 place-items-center rounded-full text-white"
-      style={{
-        background:
-          'linear-gradient(180deg, rgba(124,58,237,1), rgba(109,40,217,1))',
-      }}
-    >
-      <ClientSidebarIcon type="spark" stroke="white" />
+    <div className="flex items-center gap-3">
+      <div
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white"
+        style={{
+          background: 'linear-gradient(180deg, rgba(124,58,237,1), rgba(109,40,217,1))',
+        }}
+      >
+        <ClientSidebarIcon type="spark" stroke="white" />
+      </div>
+      <div>
+        <p className="font-bold text-sm leading-tight">Explora</p>
+        <p className="text-xs" style={{ color: 'var(--muted)' }}>Miles de platos</p>
+      </div>
     </div>
-    <p className="mt-4 text-lg font-bold">Tu experiencia lista para pedir</p>
-    <p className="mt-2 text-sm" style={{ color: 'var(--muted)' }}>
-      Explora platos, guarda favoritos y sigue tus pedidos desde un solo lugar.
-    </p>
     <button
       type="button"
-      className="mt-5 w-full rounded-xl border px-4 py-3 font-semibold"
+      className="w-full rounded-lg border py-2 text-sm font-semibold transition hover:opacity-80"
       style={{
         borderColor: 'rgba(124,58,237,.22)',
         color: '#6d28d9',
