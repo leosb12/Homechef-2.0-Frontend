@@ -35,6 +35,7 @@ import ChefIAHubPage from '../../modules/funciones_ia/pages/ChefIAHubPage'
 import ChefIAFunctionPage from '../../modules/funciones_ia/pages/ChefIAFunctionPage'
 import NotificationCenterPage from '../../modules/confianza_administracion_seguridad/pages/NotificationCenterPage'
 import AdminDeliveryDriversPage from '../../modules/confianza_administracion_seguridad/pages/AdminDeliveryDriversPage'
+import AdminActiveDeliveryOrdersPage from '../../modules/confianza_administracion_seguridad/pages/AdminActiveDeliveryOrdersPage'
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 
 function Page({ title }) { return <div><h2 className="text-xl font-semibold">{title}</h2></div> }
@@ -96,6 +97,7 @@ export default function AppRouter() {
         <Route path="dashboard" element={<Page title="Dashboard admin" />} />
         <Route path="users" element={<Page title="Usuarios" />} />
         <Route path="delivery-drivers" element={<AdminDeliveryDriversPage />} />
+        <Route path="delivery-orders" element={<AdminActiveDeliveryOrdersPage />} />
         <Route path="chefs" element={<Page title="Cocineros" />} />
         <Route path="publications" element={<Page title="Publicaciones" />} />
         <Route path="fraud" element={<Page title="Fraude y riesgo" />} />

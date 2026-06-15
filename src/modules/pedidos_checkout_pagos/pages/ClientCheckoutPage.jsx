@@ -24,6 +24,7 @@ export default function ClientCheckoutPage() {
   const cartId = searchParams.get('cart_id') || ''
   const [cart, setCart] = useState(null)
   const [preview, setPreview] = useState(null)
+  const [previewStale, setPreviewStale] = useState(false)
   const [loading, setLoading] = useState(true)
   const [previewLoading, setPreviewLoading] = useState(false)
   const [confirming, setConfirming] = useState(false)
@@ -35,6 +36,7 @@ export default function ClientCheckoutPage() {
   const [form, setForm] = useState({
     fulfillment_type: 'pickup',
     payment_method: 'cash',
+    pickup_slot: '',
     notes: '',
     address: emptyAddress,
   })
@@ -59,6 +61,15 @@ export default function ClientCheckoutPage() {
     void loadRoutePreview()
   }, [cartId, form.fulfillment_type, form.address.latitude, form.address.longitude])
 
+  useEffect(() => {
+    if (form.fulfillment_type !== 'pickup') return
+    const slots = preview?.pickup_policy?.available_slots || []
+    if (!slots.length) return
+    const stillValid = slots.some((slot) => slot.id === form.pickup_slot)
+    if (stillValid) return
+    setForm((current) => ({ ...current, pickup_slot: slots[0].id }))
+  }, [form.fulfillment_type, form.pickup_slot, preview?.pickup_policy])
+
   async function loadCartAndPreview() {
     setLoading(true)
     setMessage('')
@@ -70,6 +81,7 @@ export default function ClientCheckoutPage() {
       if (targetCart) {
         const initialPreview = await previewCheckout(buildPayload(targetCart.id, form))
         setPreview(initialPreview)
+        setPreviewStale(false)
       }
     } catch (error) {
       setMessage(error?.response?.data?.detail || 'No se pudo cargar el checkout.')
@@ -84,6 +96,9 @@ export default function ClientCheckoutPage() {
       fulfillment_type: currentForm.fulfillment_type,
       payment_method: currentForm.payment_method,
       notes: currentForm.notes,
+    }
+    if (currentForm.fulfillment_type === 'pickup' && currentForm.pickup_slot) {
+      payload.pickup_slot = currentForm.pickup_slot
     }
     if (currentForm.fulfillment_type === 'delivery') {
       payload.address = {
@@ -125,6 +140,7 @@ export default function ClientCheckoutPage() {
   }
 
   function handleMapLocationChange(point) {
+    setPreviewStale(true)
     setForm((current) => ({
       ...current,
       address: {
@@ -169,19 +185,22 @@ export default function ClientCheckoutPage() {
     setLocating(false)
   }
 
-  async function refreshPreview() {
-    if (!cartId) return
+  async function refreshPreview(nextPayload = null) {
+    if (!cartId) return null
     setPreviewLoading(true)
     setMessage('')
     try {
-      const data = await previewCheckout(buildPayload(cartId, form))
+      const data = await previewCheckout(nextPayload || buildPayload(cartId, form))
       setPreview(data)
+      setPreviewStale(false)
+      return data
     } catch (error) {
       setPreview(null)
       setMessage(
         error?.response?.data?.detail ||
           'No se pudo actualizar el resumen del checkout.',
       )
+      return null
     } finally {
       setPreviewLoading(false)
     }
@@ -212,9 +231,12 @@ export default function ClientCheckoutPage() {
     setConfirming(true)
     setMessage('')
     try {
+      const checkoutPayload = buildPayload(cartId, form)
+      const freshPreview = await refreshPreview(checkoutPayload)
+      if (!freshPreview) return
       const data = await confirmCheckout({
-        ...buildPayload(cartId, form),
-        expected_total: preview?.pricing?.total ?? null,
+        ...checkoutPayload,
+        expected_total: freshPreview?.pricing?.total ?? null,
         success_redirect_to: successRedirectForPaymentMethod(form.payment_method),
         cancel_redirect_to: cancelRedirectForPaymentMethod(form.payment_method),
       })
@@ -350,9 +372,10 @@ export default function ClientCheckoutPage() {
             <div className="flex gap-2 pt-3">
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setForm((current) => ({ ...current, fulfillment_type: 'pickup' }))
-                }
+                  setPreviewStale(true)
+                }}
                 className="rounded-lg border px-4 py-2"
                 style={{
                   borderColor: 'var(--line)',
@@ -366,9 +389,10 @@ export default function ClientCheckoutPage() {
               </button>
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setForm((current) => ({ ...current, fulfillment_type: 'delivery' }))
-                }
+                  setPreviewStale(true)
+                }}
                 className="rounded-lg border px-4 py-2"
                 style={{
                   borderColor: 'var(--line)',
@@ -390,6 +414,7 @@ export default function ClientCheckoutPage() {
                   label="Etiqueta"
                   value={form.address.label}
                   onChange={(value) => updateAddress(setForm, 'label', value)}
+                  onDirty={() => setPreviewStale(true)}
                 />
                 <Field
                   label="Contacto"
@@ -397,6 +422,7 @@ export default function ClientCheckoutPage() {
                   onChange={(value) =>
                     updateAddress(setForm, 'contact_name', value)
                   }
+                  onDirty={() => setPreviewStale(true)}
                 />
                 <Field
                   label="Telefono"
@@ -404,11 +430,13 @@ export default function ClientCheckoutPage() {
                   onChange={(value) =>
                     updateAddress(setForm, 'contact_phone', value)
                   }
+                  onDirty={() => setPreviewStale(true)}
                 />
                 <Field
                   label="Direccion"
                   value={form.address.line_1}
                   onChange={(value) => updateAddress(setForm, 'line_1', value)}
+                  onDirty={() => setPreviewStale(true)}
                 />
                 <Field
                   label="Referencia"
@@ -416,6 +444,7 @@ export default function ClientCheckoutPage() {
                   onChange={(value) =>
                     updateAddress(setForm, 'reference', value)
                   }
+                  onDirty={() => setPreviewStale(true)}
                 />
               </div>
               <div>
@@ -436,11 +465,43 @@ export default function ClientCheckoutPage() {
               </div>
             </div>
           ) : (
-            <div
-              className="rounded-xl border p-3 text-sm"
-              style={{ borderColor: 'var(--line)' }}
-            >
-              Retiraras el pedido directamente en el punto del cocinero.
+            <div className="space-y-3">
+              <div
+                className="rounded-xl border p-3 text-sm"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                Retiraras el pedido directamente en el punto del cocinero.
+              </div>
+              <label className="block">
+                <span className="mb-2 block text-sm font-medium">Horario de retiro</span>
+                <select
+                  value={form.pickup_slot}
+                  onChange={(event) => {
+                    setForm((current) => ({ ...current, pickup_slot: event.target.value }))
+                    setPreviewStale(true)
+                  }}
+                  className="w-full rounded-xl border px-3 py-2"
+                  style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
+                >
+                  {(preview?.pickup_policy?.available_slots || []).map((slot) => (
+                    <option key={slot.id} value={slot.id}>
+                      {slot.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {preview?.pickup_policy ? (
+                <div
+                  className="rounded-xl border p-3 text-sm space-y-1"
+                  style={{ borderColor: 'var(--line)' }}
+                >
+                  <p><strong>Politica de retiro:</strong> {preview.pickup_policy.schedule_summary || 'Horario operativo del cocinero.'}</p>
+                  <p>
+                    <strong>Tolerancia:</strong> {preview.pickup_policy.grace_minutes} min.
+                    <strong> Retencion:</strong> {preview.pickup_policy.retention_minutes} min adicionales.
+                  </p>
+                </div>
+              ) : null}
             </div>
           )}
 
@@ -449,9 +510,10 @@ export default function ClientCheckoutPage() {
             <div className="mt-3 grid gap-2 md:grid-cols-2">
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setForm((current) => ({ ...current, payment_method: 'cash' }))
-                }
+                  setPreviewStale(true)
+                }}
                 className="rounded-xl border px-4 py-3 text-left"
                 style={{
                   borderColor: 'var(--line)',
@@ -468,12 +530,13 @@ export default function ClientCheckoutPage() {
               </button>
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setForm((current) => ({
                     ...current,
                     payment_method: 'qr_simulado',
                   }))
-                }
+                  setPreviewStale(true)
+                }}
                 className="rounded-xl border px-4 py-3 text-left"
                 style={{
                   borderColor: 'var(--line)',
@@ -490,12 +553,13 @@ export default function ClientCheckoutPage() {
               </button>
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setForm((current) => ({
                     ...current,
                     payment_method: 'bitcoin_coingate',
                   }))
-                }
+                  setPreviewStale(true)
+                }}
                 className="rounded-xl border px-4 py-3 text-left"
                 style={{
                   borderColor: 'var(--line)',
@@ -512,12 +576,13 @@ export default function ClientCheckoutPage() {
               </button>
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
                   setForm((current) => ({
                     ...current,
                     payment_method: 'stripe_test',
                   }))
-                }
+                  setPreviewStale(true)
+                }}
                 className="rounded-xl border px-4 py-3 text-left"
                 style={{
                   borderColor: 'var(--line)',
@@ -539,9 +604,10 @@ export default function ClientCheckoutPage() {
             <label className="mb-2 block text-sm">Notas</label>
             <textarea
               value={form.notes}
-              onChange={(event) =>
+              onChange={(event) => {
                 setForm((current) => ({ ...current, notes: event.target.value }))
-              }
+                setPreviewStale(true)
+              }}
               className="min-h-24 w-full rounded-xl border px-3 py-2"
               style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
             />
@@ -597,10 +663,17 @@ export default function ClientCheckoutPage() {
           ))}
 
           {preview ? (
-            <div
-              className="space-y-2 rounded-xl border p-4"
-              style={{ borderColor: 'var(--line)' }}
-            >
+            <div className="space-y-2 rounded-xl border p-4" style={{ borderColor: 'var(--line)' }}>
+              {previewStale ? (
+                <div className="rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--line)' }}>
+                  El resumen quedo desactualizado por cambios recientes. Al confirmar se recalculara automaticamente.
+                </div>
+              ) : null}
+              {preview.pickup_policy?.selected_slot && form.fulfillment_type === 'pickup' ? (
+                <div className="rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--line)' }}>
+                  <strong>Retiro seleccionado:</strong> {preview.pickup_policy.selected_slot.label}
+                </div>
+              ) : null}
               <Row
                 label="Subtotal"
                 value={`Bs ${Number(preview.pricing?.subtotal || 0).toFixed(2)}`}
@@ -639,13 +712,16 @@ export default function ClientCheckoutPage() {
   )
 }
 
-function Field({ label, value, onChange }) {
+function Field({ label, value, onChange, onDirty }) {
   return (
     <label className="block">
       <span className="mb-2 block text-sm">{label}</span>
       <input
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) => {
+          onChange(event.target.value)
+          onDirty?.()
+        }}
         className="w-full rounded-xl border px-3 py-2"
         style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
       />

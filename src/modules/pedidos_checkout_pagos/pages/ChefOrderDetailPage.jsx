@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
+import ReceiptActions from '../components/ReceiptActions'
 import {
   chefAcceptOrder,
+  chefClosePickupRetention,
   chefConfirmPickup,
+  chefExtendPickupRetention,
   chefMarkPreparing,
+  chefMarkPickupNoShow,
   chefMarkReady,
   chefRejectOrder,
   fetchChefOrderDetail,
@@ -16,6 +20,9 @@ const actionLabels = {
   preparing: 'Pasar a preparacion',
   ready: 'Marcar listo',
   confirm_pickup: 'Confirmar retiro',
+  mark_pickup_no_show: 'Registrar no presentacion',
+  extend_pickup_retention: 'Extender retencion',
+  close_pickup_retention: 'Cerrar retencion',
 }
 
 export default function ChefOrderDetailPage() {
@@ -62,6 +69,9 @@ export default function ChefOrderDetailPage() {
         }
         await chefConfirmPickup(order.id, pickupCode.trim())
       }
+      if (action === 'mark_pickup_no_show') await chefMarkPickupNoShow(order.id)
+      if (action === 'extend_pickup_retention') await chefExtendPickupRetention(order.id)
+      if (action === 'close_pickup_retention') await chefClosePickupRetention(order.id)
       await load()
     } catch (error) {
       setMessage(error?.response?.data?.detail || 'No se pudo ejecutar la accion del pedido.')
@@ -129,7 +139,24 @@ export default function ChefOrderDetailPage() {
               <div className="rounded-xl border p-3 text-sm space-y-2" style={{ borderColor: 'var(--line)' }}>
                 <p><strong>Codigo de retiro:</strong> {order.pickup.pickup_code || '-'}</p>
                 <p><strong>Instrucciones:</strong> {order.pickup.pickup_instructions || 'Presenta el codigo al retirar.'}</p>
-                <p><strong>Horario estimado:</strong> {order.pickup.pickup_schedule_note || 'Segun avance de preparacion.'}</p>
+                <p><strong>Horario operativo:</strong> {order.pickup.pickup_schedule_note || 'Segun avance de preparacion.'}</p>
+                {order.pickup.selected_slot_start ? <p><strong>Horario elegido por cliente:</strong> {formatPickupWindow(order.pickup.selected_slot_start, order.pickup.selected_slot_end)}</p> : null}
+                {order.pickup.pickup_window_start ? <p><strong>Ventana activa:</strong> {formatPickupWindow(order.pickup.pickup_window_start, order.pickup.pickup_window_end)}</p> : null}
+                {order.pickup.pickup_grace_deadline ? <p><strong>Tolerancia:</strong> hasta {formatDate(order.pickup.pickup_grace_deadline)}</p> : null}
+                {order.pickup.pickup_retention_deadline ? <p><strong>Retencion:</strong> hasta {formatDate(order.pickup.pickup_retention_deadline)}</p> : null}
+                {typeof order.pickup.retention_extension_count === 'number' ? (
+                  <p><strong>Extensiones usadas:</strong> {order.pickup.retention_extension_count} / {order.pickup.policy?.retention_max_extensions ?? 0}</p>
+                ) : null}
+                {order.pickup.state_label ? <p><strong>Estado de retiro:</strong> {order.pickup.state_label}</p> : null}
+                {order.pickup.state_message ? <p>{order.pickup.state_message}</p> : null}
+                {order.pickup.operational_flags ? (
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {order.pickup.operational_flags.pickup_waiting_client ? <StatusChip tone="blue">Esperando cliente</StatusChip> : null}
+                    {order.pickup.operational_flags.pickup_client_no_show ? <StatusChip tone="orange">No presentado</StatusChip> : null}
+                    {order.pickup.operational_flags.pickup_retention_active ? <StatusChip tone="purple">Retencion activa</StatusChip> : null}
+                    {order.pickup.operational_flags.pickup_retention_expired ? <StatusChip tone="red">Retencion vencida</StatusChip> : null}
+                  </div>
+                ) : null}
                 {order.pickup.confirmed_at ? (
                   <p><strong>Confirmado:</strong> {formatDate(order.pickup.confirmed_at)}</p>
                 ) : null}
@@ -145,6 +172,8 @@ export default function ChefOrderDetailPage() {
               ))}
             </div>
 
+            <ReceiptActions orderId={order.id} receipts={order.receipts} viewer="chef" />
+
             {order.available_actions?.length ? (
               <div className="flex flex-wrap gap-2">
                 <button
@@ -155,16 +184,14 @@ export default function ChefOrderDetailPage() {
                 >
                   Ver timeline
                 </button>
-                {order.fulfillment_type === 'delivery' ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/chef/orders/${order.id}/tracking`)}
-                    className="px-4 py-2 rounded-lg border"
-                    style={{ borderColor: 'var(--line)', color: 'inherit' }}
-                  >
-                    Ver tracking
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={() => navigate(`/chef/orders/${order.id}/tracking`)}
+                  className="px-4 py-2 rounded-lg border"
+                  style={{ borderColor: 'var(--line)', color: 'inherit' }}
+                >
+                  Ver tracking
+                </button>
                 {order.available_actions.map((action) => action === 'confirm_pickup' ? (
                   <div key={action} className="flex flex-wrap items-center gap-2">
                     <input
@@ -209,16 +236,14 @@ export default function ChefOrderDetailPage() {
                   >
                     Ver timeline
                   </button>
-                  {order.fulfillment_type === 'delivery' ? (
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/chef/orders/${order.id}/tracking`)}
-                      className="px-4 py-2 rounded-lg border"
-                      style={{ borderColor: 'var(--line)' }}
-                    >
-                      Ver tracking
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/chef/orders/${order.id}/tracking`)}
+                    className="px-4 py-2 rounded-lg border"
+                    style={{ borderColor: 'var(--line)' }}
+                  >
+                    Ver tracking
+                  </button>
                 </div>
               </div>
             )}
@@ -251,6 +276,33 @@ function Info({ label, value }) {
 function formatDate(value) {
   if (!value) return '-'
   return new Date(value).toLocaleString()
+}
+
+function StatusChip({ children, tone = 'purple' }) {
+  const palette = {
+    purple: { bg: 'rgba(124,58,237,.08)', border: 'rgba(124,58,237,.18)', text: '#6d28d9' },
+    blue: { bg: 'rgba(37,99,235,.08)', border: 'rgba(37,99,235,.18)', text: '#1d4ed8' },
+    orange: { bg: 'rgba(249,115,22,.08)', border: 'rgba(249,115,22,.18)', text: '#c2410c' },
+    red: { bg: 'rgba(239,68,68,.08)', border: 'rgba(239,68,68,.18)', text: '#b91c1c' },
+  }[tone]
+  return (
+    <span
+      className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold"
+      style={{ backgroundColor: palette.bg, borderColor: palette.border, color: palette.text }}
+    >
+      {children}
+    </span>
+  )
+}
+
+function formatPickupWindow(start, end) {
+  if (!start) return '-'
+  const startDate = new Date(start)
+  const endDate = end ? new Date(end) : null
+  const dateLabel = startDate.toLocaleDateString()
+  const startLabel = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const endLabel = endDate ? endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
+  return `${dateLabel} ${startLabel} - ${endLabel}`
 }
 
 function labelForStatus(status) {

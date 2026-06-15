@@ -4,6 +4,7 @@ const links = [
   { to: '/admin/dashboard', label: 'Resumen general', icon: <SidebarIcon type="dashboard" /> },
   { to: '/admin/users', label: 'Usuarios', icon: <SidebarIcon type="users" /> },
   { to: '/admin/delivery-drivers', label: 'Repartidores', icon: <SidebarIcon type="delivery" /> },
+  { to: '/admin/delivery-orders', label: 'Pedidos delivery', icon: <SidebarIcon type="route" /> },
   { to: '/admin/publications', label: 'Publicaciones', icon: <SidebarIcon type="publications" /> },
   { to: '/admin/fraud', label: 'Fraude y riesgo', icon: <SidebarIcon type="shield" /> },
   { to: '/admin/reports', label: 'Reportes', icon: <SidebarIcon type="reports" /> },
@@ -97,6 +98,16 @@ function SidebarIcon({ type, stroke = 'currentColor' }) {
           <circle cx="17.5" cy="17.5" r="1.8" />
           <path d="M3 6h10v9H3z" />
           <path d="M13 9h4l3 3v3h-7Z" />
+        </svg>
+      )
+    case 'route':
+      return (
+        <svg {...common}>
+          <circle cx="6.5" cy="17.5" r="1.6" />
+          <circle cx="17.5" cy="6.5" r="1.6" />
+          <path d="M8 17.5h3.5a4 4 0 0 0 4-4V8" />
+          <path d="M13 8h2.9" />
+          <path d="m14.8 10 1.1-2 2 1.1" />
         </svg>
       )
     case 'publications':

@@ -1,7 +1,9 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { cancelMyOrder, fetchMyOrders } from '../services/order_service'
+import ReceiptActions from '../components/ReceiptActions'
+import RepeatOrderSummaryModal from '../components/RepeatOrderSummaryModal'
+import { cancelMyOrder, fetchMyOrders, repeatMyOrder } from '../services/order_service'
 
 const ORDER_STATUS_OPTIONS = [
   { value: 'ALL', label: 'Todos' },
@@ -34,11 +36,13 @@ export default function ClientOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [busyOrderId, setBusyOrderId] = useState('')
+  const [repeatBusyOrderId, setRepeatBusyOrderId] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [paymentFilter, setPaymentFilter] = useState('ALL')
   const [fulfillmentFilter, setFulfillmentFilter] = useState('ALL')
   const [timelineOrder, setTimelineOrder] = useState(null)
+  const [repeatSummary, setRepeatSummary] = useState(null)
 
   useEffect(() => {
     load()
@@ -67,6 +71,35 @@ export default function ClientOrdersPage() {
       setMessage(error?.response?.data?.detail || 'No se pudo cancelar el pedido.')
     } finally {
       setBusyOrderId('')
+    }
+  }
+
+  async function handleRepeat(orderId) {
+    setRepeatBusyOrderId(orderId)
+    setMessage('')
+    try {
+      const data = await repeatMyOrder(orderId)
+      const requested = Number(data?.summary?.requested_items || 0)
+      const added = Number(data?.summary?.added_items || 0)
+      const skipped = Number(data?.summary?.skipped_items || 0)
+      if (data?.cart?.id && requested > 0 && added === requested && skipped === 0) {
+        navigate(`/client/cart?cart_id=${encodeURIComponent(data.cart.id)}`, {
+          state: {
+            repeatSummary: {
+              message: data.message,
+              added,
+              skipped,
+              requested,
+            },
+          },
+        })
+        return
+      }
+      setRepeatSummary(data)
+    } catch (error) {
+      setMessage(error?.response?.data?.detail || 'No se pudo repetir el pedido.')
+    } finally {
+      setRepeatBusyOrderId('')
     }
   }
 
@@ -187,7 +220,7 @@ export default function ClientOrdersPage() {
         {filteredItems.map((order) => {
           const progressSteps = buildOrderProgress(order)
           const paymentAction = getPaymentAction(order)
-          const showTracking = order.fulfillment_type === 'delivery'
+          const showTracking = true
 
           return (
             <article key={order.id} className="rounded-[28px] border p-5 space-y-4" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
@@ -304,7 +337,10 @@ export default function ClientOrdersPage() {
                 <div className="rounded-2xl border p-4 text-sm space-y-1" style={{ borderColor: 'var(--line)' }}>
                   <p><strong>Codigo de retiro:</strong> {order.pickup.pickup_code || '-'}</p>
                   <p><strong>Instrucciones:</strong> {order.pickup.pickup_instructions || 'Presenta el codigo al cocinero.'}</p>
-                  <p><strong>Horario estimado:</strong> {order.pickup.pickup_schedule_note || 'Segun avance de preparacion.'}</p>
+                  <p><strong>Horario operativo:</strong> {order.pickup.pickup_schedule_note || 'Segun avance de preparacion.'}</p>
+                  {order.pickup.selected_slot_start ? <p><strong>Horario elegido:</strong> {formatPickupWindow(order.pickup.selected_slot_start, order.pickup.selected_slot_end)}</p> : null}
+                  {order.pickup.state_label ? <p><strong>Estado de retiro:</strong> {order.pickup.state_label}</p> : null}
+                  {order.pickup.state_message ? <p>{order.pickup.state_message}</p> : null}
                 </div>
               ) : null}
 
@@ -325,6 +361,17 @@ export default function ClientOrdersPage() {
                   </SecondaryActionButton>
                 ) : null}
 
+                {order.receipts?.length ? (
+                  <ReceiptActions
+                    orderId={order.id}
+                    receipts={order.receipts}
+                    viewer="client"
+                    compact
+                    inline
+                    title="Comprobante"
+                  />
+                ) : null}
+
                 {order.can_cancel ? (
                   <SecondaryActionButton
                     onClick={() => handleCancel(order.id)}
@@ -334,6 +381,16 @@ export default function ClientOrdersPage() {
                     {busyOrderId === order.id ? 'Cancelando...' : 'Cancelar pedido'}
                   </SecondaryActionButton>
                 ) : null}
+
+                {order.items?.length ? (
+                  <SecondaryActionButton
+                    onClick={() => handleRepeat(order.id)}
+                    disabled={busyOrderId === order.id || repeatBusyOrderId === order.id}
+                    icon={<RepeatIcon />}
+                  >
+                    {repeatBusyOrderId === order.id ? 'Repitiendo...' : 'Repetir pedido'}
+                  </SecondaryActionButton>
+                ) : null}
               </div>
             </article>
           )
@@ -341,6 +398,16 @@ export default function ClientOrdersPage() {
       </div>
 
       {timelineOrder ? <TimelineModal order={timelineOrder} onClose={() => setTimelineOrder(null)} /> : null}
+      <RepeatOrderSummaryModal
+        open={Boolean(repeatSummary)}
+        summary={repeatSummary}
+        onClose={() => setRepeatSummary(null)}
+        onGoToCart={() => {
+          if (!repeatSummary?.cart?.id) return
+          navigate(`/client/cart?cart_id=${encodeURIComponent(repeatSummary.cart.id)}`)
+          setRepeatSummary(null)
+        }}
+      />
     </section>
   )
 }
@@ -686,6 +753,16 @@ function formatDate(value) {
   return new Date(value).toLocaleString()
 }
 
+function formatPickupWindow(start, end) {
+  if (!start) return '-'
+  const startDate = new Date(start)
+  const endDate = end ? new Date(end) : null
+  const dateLabel = startDate.toLocaleDateString()
+  const startLabel = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const endLabel = endDate ? endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
+  return `${dateLabel} ${startLabel} - ${endLabel}`
+}
+
 function labelForStatus(status) {
   const map = {
     PAYMENT_VALIDATING: 'Validando pago',
@@ -927,6 +1004,17 @@ function CloseCircleIcon() {
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="9" />
       <path d="m9 9 6 6M15 9l-6 6" />
+    </svg>
+  )
+}
+
+function RepeatIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 12a8 8 0 0 1 13.66-5.66L19 8" />
+      <path d="M21 12a8 8 0 0 1-13.66 5.66L5 16" />
+      <path d="M19 3v5h-5" />
+      <path d="M5 16v5h5" />
     </svg>
   )
 }

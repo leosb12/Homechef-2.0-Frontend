@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { fetchCart, removeCartItem, updateCartItem } from '../services/cart_service'
 
 export default function ClientCartPage() {
   const navigate = useNavigate()
+  const location = useLocation()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [cartData, setCartData] = useState({ carts: [], summary: { subtotal: 0, items_count: 0 } })
   const [selectedCartId, setSelectedCartId] = useState('')
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [busyItemId, setBusyItemId] = useState('')
+  const requestedCartId = searchParams.get('cart_id') || ''
+  const repeatSummary = location.state?.repeatSummary || null
 
   useEffect(() => {
     loadCart()
-  }, [])
+  }, [requestedCartId])
 
   async function loadCart() {
     setLoading(true)
@@ -20,6 +24,9 @@ export default function ClientCartPage() {
       const data = await fetchCart()
       setCartData(data)
       setSelectedCartId((current) => {
+        if (requestedCartId && data.carts?.some((cart) => cart.id === requestedCartId)) {
+          return requestedCartId
+        }
         if (data.carts?.some((cart) => cart.id === current)) return current
         return data.carts?.[0]?.id || ''
       })
@@ -70,6 +77,7 @@ export default function ClientCartPage() {
       return recalculateSummary({ ...current, carts })
     })
     setSelectedCartId(nextCart.id)
+    setSearchParams({ cart_id: nextCart.id })
   }
 
   const isEmpty = !loading && (cartData.carts || []).length === 0
@@ -103,6 +111,15 @@ export default function ClientCartPage() {
           {message}
         </div>
       )}
+
+      {repeatSummary ? (
+        <div className="rounded-2xl border p-4" style={{ borderColor: 'rgba(34,197,94,.18)', backgroundColor: 'rgba(34,197,94,.08)' }}>
+          <p className="font-semibold">Pedido repetido</p>
+          <p className="text-sm" style={{ color: 'var(--muted)' }}>
+            {repeatSummary.message} Se solicitaron {repeatSummary.requested}, se agregaron {repeatSummary.added} y se omitieron {repeatSummary.skipped}.
+          </p>
+        </div>
+      ) : null}
 
       {loading ? <div className="rounded-xl border p-4" style={{ borderColor: 'var(--line)' }}>Cargando carritos...</div> : null}
 
@@ -153,7 +170,10 @@ export default function ClientCartPage() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedCartId(cart.id)}
+                    onClick={() => {
+                      setSelectedCartId(cart.id)
+                      setSearchParams({ cart_id: cart.id })
+                    }}
                     className="px-4 py-2 rounded-lg border"
                     style={{
                       borderColor: isSelected ? 'var(--brand)' : 'var(--line)',

@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
-import { cancelMyOrder, fetchMyOrderDetail } from '../services/order_service'
+import ReceiptActions from '../components/ReceiptActions'
+import RepeatOrderSummaryModal from '../components/RepeatOrderSummaryModal'
+import { cancelMyOrder, fetchMyOrderDetail, repeatMyOrder } from '../services/order_service'
 
 export default function ClientOrderDetailPage() {
   const navigate = useNavigate()
@@ -9,8 +11,10 @@ export default function ClientOrderDetailPage() {
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
+  const [repeating, setRepeating] = useState(false)
   const [message, setMessage] = useState('')
   const [timelineOpen, setTimelineOpen] = useState(false)
+  const [repeatSummary, setRepeatSummary] = useState(null)
 
   useEffect(() => {
     load()
@@ -40,6 +44,36 @@ export default function ClientOrderDetailPage() {
       setMessage(error?.response?.data?.detail || 'No se pudo cancelar el pedido.')
     } finally {
       setCancelling(false)
+    }
+  }
+
+  async function handleRepeat() {
+    if (!order?.items?.length || repeating) return
+    setRepeating(true)
+    setMessage('')
+    try {
+      const data = await repeatMyOrder(order.id)
+      const requested = Number(data?.summary?.requested_items || 0)
+      const added = Number(data?.summary?.added_items || 0)
+      const skipped = Number(data?.summary?.skipped_items || 0)
+      if (data?.cart?.id && requested > 0 && added === requested && skipped === 0) {
+        navigate(`/client/cart?cart_id=${encodeURIComponent(data.cart.id)}`, {
+          state: {
+            repeatSummary: {
+              message: data.message,
+              added,
+              skipped,
+              requested,
+            },
+          },
+        })
+        return
+      }
+      setRepeatSummary(data)
+    } catch (error) {
+      setMessage(error?.response?.data?.detail || 'No se pudo repetir el pedido.')
+    } finally {
+      setRepeating(false)
     }
   }
 
@@ -102,7 +136,13 @@ export default function ClientOrderDetailPage() {
               <div className="rounded-xl border p-3 text-sm space-y-1" style={{ borderColor: 'var(--line)' }}>
                 <p><strong>Codigo de retiro:</strong> {order.pickup.pickup_code || '-'}</p>
                 <p><strong>Instrucciones:</strong> {order.pickup.pickup_instructions || 'Presenta el codigo al cocinero.'}</p>
-                <p><strong>Horario estimado:</strong> {order.pickup.pickup_schedule_note || 'Segun avance de preparacion.'}</p>
+                <p><strong>Horario operativo:</strong> {order.pickup.pickup_schedule_note || 'Segun avance de preparacion.'}</p>
+                {order.pickup.selected_slot_start ? <p><strong>Horario elegido:</strong> {formatPickupWindow(order.pickup.selected_slot_start, order.pickup.selected_slot_end)}</p> : null}
+                {order.pickup.pickup_window_start ? <p><strong>Ventana activa:</strong> {formatPickupWindow(order.pickup.pickup_window_start, order.pickup.pickup_window_end)}</p> : null}
+                {order.pickup.pickup_grace_deadline ? <p><strong>Tolerancia:</strong> hasta {formatDate(order.pickup.pickup_grace_deadline)}</p> : null}
+                {order.pickup.pickup_retention_deadline ? <p><strong>Retencion:</strong> hasta {formatDate(order.pickup.pickup_retention_deadline)}</p> : null}
+                {order.pickup.state_label ? <p><strong>Estado de retiro:</strong> {order.pickup.state_label}</p> : null}
+                {order.pickup.state_message ? <p>{order.pickup.state_message}</p> : null}
                 {order.pickup.confirmed_at ? (
                   <p><strong>Retirado:</strong> {formatDate(order.pickup.confirmed_at)}</p>
                 ) : null}
@@ -127,16 +167,33 @@ export default function ClientOrderDetailPage() {
               >
                 Ver timeline
               </button>
-              {order.fulfillment_type === 'delivery' ? (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/client/orders/${order.id}/tracking`)}
-                  className="px-4 py-2 rounded-lg border"
-                  style={{ borderColor: 'var(--line)' }}
-                >
-                  Ver tracking
-                </button>
+              <button
+                type="button"
+                onClick={() => navigate(`/client/orders/${order.id}/tracking`)}
+                className="px-4 py-2 rounded-lg border"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                Ver tracking
+              </button>
+              {order.receipts?.length ? (
+                <ReceiptActions
+                  orderId={order.id}
+                  receipts={order.receipts}
+                  viewer="client"
+                  compact
+                  inline
+                  title="Comprobante"
+                />
               ) : null}
+              <button
+                type="button"
+                onClick={handleRepeat}
+                disabled={repeating}
+                className="px-4 py-2 rounded-lg border disabled:opacity-50"
+                style={{ borderColor: 'var(--line)' }}
+              >
+                {repeating ? 'Repitiendo...' : 'Repetir pedido'}
+              </button>
               {order.can_cancel ? (
                 <button
                   type="button"
@@ -196,6 +253,16 @@ export default function ClientOrderDetailPage() {
           onClose={() => setTimelineOpen(false)}
         />
       ) : null}
+      <RepeatOrderSummaryModal
+        open={Boolean(repeatSummary)}
+        summary={repeatSummary}
+        onClose={() => setRepeatSummary(null)}
+        onGoToCart={() => {
+          if (!repeatSummary?.cart?.id) return
+          navigate(`/client/cart?cart_id=${encodeURIComponent(repeatSummary.cart.id)}`)
+          setRepeatSummary(null)
+        }}
+      />
     </section>
   )
 }
@@ -212,6 +279,16 @@ function Info({ label, value }) {
 function formatDate(value) {
   if (!value) return '-'
   return new Date(value).toLocaleString()
+}
+
+function formatPickupWindow(start, end) {
+  if (!start) return '-'
+  const startDate = new Date(start)
+  const endDate = end ? new Date(end) : null
+  const dateLabel = startDate.toLocaleDateString()
+  const startLabel = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const endLabel = endDate ? endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
+  return `${dateLabel} ${startLabel} - ${endLabel}`
 }
 
 function labelForStatus(status) {

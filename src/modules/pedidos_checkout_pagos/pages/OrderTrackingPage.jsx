@@ -113,8 +113,18 @@ export default function OrderTrackingPage({ viewerRole = 'client' }) {
             <Info label="Modalidad" value={tracking.fulfillment_label} />
             <Info label="Pago" value={tracking.payment_status_label} />
           </div>
+          {tracking.pickup ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              <Info label="Codigo de retiro" value={tracking.pickup.pickup_code || '-'} mono />
+              <Info label="Estado de retiro" value={tracking.pickup.state_label || tracking.pickup.status || '-'} />
+              <Info label="Horario elegido" value={formatPickupWindow(tracking.pickup.selected_slot_start, tracking.pickup.selected_slot_end)} />
+              <Info label="Ventana activa" value={formatPickupWindow(tracking.pickup.pickup_window_start, tracking.pickup.pickup_window_end)} />
+              <Info label="Tolerancia" value={tracking.pickup.pickup_grace_deadline ? formatDate(tracking.pickup.pickup_grace_deadline) : '-'} />
+              <Info label="Retencion" value={tracking.pickup.pickup_retention_deadline ? formatDate(tracking.pickup.pickup_retention_deadline) : '-'} />
+            </div>
+          ) : null}
           <div className="rounded-xl border p-4 text-sm" style={{ borderColor: 'var(--line)' }}>
-            Este pedido es de retiro. El seguimiento con mapa solo aplica a pedidos con delivery.
+            {tracking.pickup?.state_message || 'Este pedido es de retiro. El seguimiento con mapa solo aplica a pedidos con delivery.'}
           </div>
         </section>
       ) : null}
@@ -154,6 +164,45 @@ export default function OrderTrackingPage({ viewerRole = 'client' }) {
                   </span>
                 </div>
                 <DeliveryTrackingMap mapData={tracking.map} />
+                {tracking.map.quality ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Info label="Proveedor" value={tracking.map.quality.provider || '-'} />
+                    <Info
+                      label="Fallback"
+                      value={tracking.map.quality.uses_fallback ? `Si${tracking.map.quality.fallback_reason ? ` · ${tracking.map.quality.fallback_reason}` : ''}` : 'No'}
+                    />
+                    <Info label="Origen usado" value={tracking.map.quality.origin_used?.label || tracking.map.quality.origin_used?.kind || '-'} />
+                    <Info label="Destino usado" value={tracking.map.quality.destination_used?.label || tracking.map.quality.destination_used?.kind || '-'} />
+                  </div>
+                ) : null}
+                {tracking.map.grouped_route ? (
+                  <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--line)' }}>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold">Ruta consolidada del repartidor</span>
+                      <span className="text-sm" style={{ color: 'var(--muted)' }}>
+                        {tracking.map.grouped_route.active_assignment_count || 0} entrega(s)
+                      </span>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-3">
+                      <Info label="Distancia total" value={tracking.map.grouped_route.distance_human || '-'} />
+                      <Info label="ETA total" value={tracking.map.grouped_route.duration_human || '-'} />
+                      <Info label="Proxima parada" value={tracking.map.grouped_route.next_stop?.status_label || '-'} />
+                    </div>
+                    {(tracking.map.grouped_route.stops || []).length ? (
+                      <div className="space-y-2">
+                        {tracking.map.grouped_route.stops.map((stop, index) => (
+                          <div key={`${stop.assignment_id}-${stop.kind}-${index}`} className="rounded-xl border p-3" style={{ borderColor: 'var(--line)' }}>
+                            <p className="font-semibold">{index + 1}. {stop.status_label}</p>
+                            <p className="text-sm" style={{ color: 'var(--muted)' }}>
+                              Pedido {stop.order_id} · {stop.label || stop.kind}
+                            </p>
+                            {stop.address ? <p className="text-sm">{stop.address}</p> : null}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : null}
 
@@ -298,4 +347,14 @@ function Info({ label, value, mono = false }) {
 function formatDate(value) {
   if (!value) return '-'
   return new Date(value).toLocaleString()
+}
+
+function formatPickupWindow(start, end) {
+  if (!start) return '-'
+  const startDate = new Date(start)
+  const endDate = end ? new Date(end) : null
+  const dateLabel = startDate.toLocaleDateString()
+  const startLabel = startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const endLabel = endDate ? endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
+  return `${dateLabel} ${startLabel} - ${endLabel}`
 }
