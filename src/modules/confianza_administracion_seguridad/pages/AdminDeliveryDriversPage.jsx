@@ -167,7 +167,7 @@ export default function AdminDeliveryDriversPage() {
           </h1>
           <p className="mt-2 text-[15px]" style={{ color: 'var(--muted)' }}>
             Revisa solicitudes nuevas y cambia el estado operativo de los
-            repartidores.
+            repartidores, incluyendo su disponibilidad real para autoasignacion.
           </p>
         </div>
 
@@ -424,12 +424,27 @@ export default function AdminDeliveryDriversPage() {
                         </span>
                       </td>
                       <td className="px-6 py-6 align-top">
-                        <span
-                          className="inline-flex rounded-full px-4 py-2 text-xs font-semibold capitalize"
-                          style={{ backgroundColor: badge.bg, color: badge.color }}
-                        >
-                          {badge.label}
-                        </span>
+                        <div className="space-y-3">
+                          <span
+                            className="inline-flex rounded-full px-4 py-2 text-xs font-semibold capitalize"
+                            style={{ backgroundColor: badge.bg, color: badge.color }}
+                          >
+                            {badge.label}
+                          </span>
+                          <div className="text-xs" style={{ color: 'var(--muted)' }}>
+                            <div>
+                              Disponibilidad manual:{' '}
+                              <strong>{formatAvailability(item.availability_manual_status)}</strong>
+                            </div>
+                            <div>
+                              Disponibilidad efectiva:{' '}
+                              <strong>{formatAvailability(item.availability_effective_status)}</strong>
+                            </div>
+                            <div>
+                              Capacidad: {item.active_assignments_count}/{item.capacity_limit}
+                            </div>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-6 py-6 align-top">
                         <div className="flex flex-col gap-2">
@@ -557,6 +572,15 @@ function initials(value) {
       .map((part) => part[0]?.toUpperCase() || '')
       .join('') || 'RP'
   )
+}
+
+function formatAvailability(value) {
+  const labels = {
+    DISPONIBLE: 'Disponible',
+    OCUPADO: 'Ocupado',
+    FUERA_DE_SERVICIO: 'Fuera de servicio',
+  }
+  return labels[value] || value || '-'
 }
 
 function UiIcon({ type, stroke = 'currentColor' }) {

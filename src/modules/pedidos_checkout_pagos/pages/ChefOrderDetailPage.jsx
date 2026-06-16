@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
+import LastLoadedNotice from '../../../shared/components/LastLoadedNotice'
+import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache'
 import ReceiptActions from '../components/ReceiptActions'
 import {
   chefAcceptOrder,
@@ -32,6 +34,7 @@ export default function ChefOrderDetailPage() {
   const [loading, setLoading] = useState(true)
   const [busyAction, setBusyAction] = useState('')
   const [message, setMessage] = useState('')
+  const [offlineMeta, setOfflineMeta] = useState(null)
   const [pickupCode, setPickupCode] = useState('')
   const [timelineOpen, setTimelineOpen] = useState(false)
 
@@ -46,7 +49,9 @@ export default function ChefOrderDetailPage() {
       const data = await fetchChefOrderDetail(id)
       setOrder(data.order || null)
       setPickupCode(data.order?.pickup?.pickup_code || '')
+      setOfflineMeta(extractScreenSnapshotMeta(data))
     } catch (error) {
+      setOfflineMeta(null)
       setMessage(error?.response?.data?.detail || 'No se pudo cargar el detalle del pedido.')
     } finally {
       setLoading(false)
@@ -97,6 +102,7 @@ export default function ChefOrderDetailPage() {
       </div>
 
       {message ? <div className="rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--line)' }}>{message}</div> : null}
+      {offlineMeta ? <LastLoadedNotice cachedAt={offlineMeta.cachedAt} /> : null}
       {!order ? <div className="rounded-xl border p-4" style={{ borderColor: 'var(--line)' }}>No se encontro el pedido.</div> : null}
 
       {order ? (

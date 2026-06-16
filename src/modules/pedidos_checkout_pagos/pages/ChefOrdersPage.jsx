@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import LastLoadedNotice from '../../../shared/components/LastLoadedNotice'
+import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache'
 import {
   chefAcceptOrder,
   chefClosePickupRetention,
@@ -59,6 +61,7 @@ export default function ChefOrdersPage() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [offlineMeta, setOfflineMeta] = useState(null)
   const [busyOrderId, setBusyOrderId] = useState('')
   const [tab, setTab] = useState('all')
   const [search, setSearch] = useState('')
@@ -75,7 +78,9 @@ export default function ChefOrdersPage() {
     try {
       const data = await fetchChefOrders()
       setItems(data.items || [])
+      setOfflineMeta(extractScreenSnapshotMeta(data))
     } catch (error) {
+      setOfflineMeta(null)
       setMessage(error?.response?.data?.detail || 'No se pudieron cargar los pedidos recibidos.')
     } finally {
       setLoading(false)
@@ -213,6 +218,7 @@ export default function ChefOrdersPage() {
             {message}
           </div>
         ) : null}
+        {offlineMeta ? <LastLoadedNotice cachedAt={offlineMeta.cachedAt} /> : null}
       </section>
 
       {loading ? <div className="rounded-xl border p-4" style={{ borderColor: 'var(--line)' }}>Cargando pedidos...</div> : null}
@@ -228,7 +234,7 @@ export default function ChefOrdersPage() {
           <div
             className="hidden xl:grid gap-4 px-5 py-4 text-sm font-semibold"
             style={{
-              gridTemplateColumns: '1.45fr .9fr .7fr 1.2fr .65fr .75fr .9fr 1.5fr .9fr 1.15fr',
+              gridTemplateColumns: '1.4fr .88fr .7fr 1.08fr .62fr .78fr .9fr 2.05fr .82fr 1.08fr',
               borderBottom: '1px solid var(--line)',
             }}
           >
@@ -249,7 +255,7 @@ export default function ChefOrdersPage() {
               <div key={order.id} className="px-5 py-5">
                 <div
                   className="hidden xl:grid gap-4 items-start"
-                  style={{ gridTemplateColumns: '1.45fr .9fr .7fr 1.2fr .65fr .75fr .9fr 1.5fr .9fr 1.15fr' }}
+                  style={{ gridTemplateColumns: '1.4fr .88fr .7fr 1.08fr .62fr .78fr .9fr 2.05fr .82fr 1.08fr' }}
                 >
                   <div>
                     <p className="font-medium break-all">{order.id}</p>
@@ -430,63 +436,135 @@ function compactDate(value) {
 function buildChefStageSteps(order) {
   const isPickup = order.fulfillment_type === 'pickup'
   const steps = [
+    { key: 'AWAITING_CHEF_CONFIRMATION', label: 'Recibido' },
     { key: 'ACCEPTED', label: 'Aceptado' },
     { key: 'PREPARING', label: 'Preparando' },
     { key: isPickup ? 'READY_FOR_PICKUP' : 'READY_FOR_DELIVERY', label: 'Listo' },
     { key: isPickup ? 'PICKED_UP' : 'DELIVERED', label: isPickup ? 'Retirado' : 'Entregado' },
   ]
-  const completedSets = {
-    ACCEPTED: ['ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP', 'READY_FOR_DELIVERY', 'PICKED_UP', 'DELIVERED'],
-    PREPARING: ['PREPARING', 'READY_FOR_PICKUP', 'READY_FOR_DELIVERY', 'PICKED_UP', 'DELIVERED'],
-    READY_FOR_PICKUP: ['READY_FOR_PICKUP', 'PICKED_UP'],
-    READY_FOR_DELIVERY: ['READY_FOR_DELIVERY', 'DELIVERED'],
-    PICKED_UP: ['PICKED_UP'],
-    DELIVERED: ['DELIVERED'],
-  }
+  const currentIndex = chefProgressIndex(order.status, isPickup)
+  const statusDates = buildChefStatusDateMap(order)
 
-  return steps.map((step) => ({
+  return steps.map((step, index) => ({
     ...step,
-    done: (completedSets[step.key] || []).includes(order.status),
+    done: index < currentIndex || chefStepCompleted(order.status, step.key, isPickup),
+    active: index === currentIndex,
+    date: statusDates[step.key] || '',
   }))
 }
 
 function OrderStageProgress({ order }) {
   const steps = buildChefStageSteps(order)
   return (
-    <div className="space-y-2">
-      <div className={`grid gap-2 ${steps.length === 4 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-        {steps.map((step, index) => (
-          <div key={`${order.id}-${step.key}`} className="flex flex-col items-center gap-2 text-center">
-            <div className="relative flex w-full items-center justify-center">
-              {index > 0 ? (
-                <span
-                  className="absolute left-0 right-1/2 top-1/2 h-[2px] -translate-y-1/2"
-                  style={{ backgroundColor: step.done ? '#7c3aed' : 'rgba(148,163,184,.35)' }}
+    <div className="rounded-2xl border px-3 py-3" style={{ borderColor: 'var(--line)', backgroundColor: 'rgba(124,58,237,.02)' }}>
+      <div className={`grid gap-3 ${steps.length >= 5 ? 'grid-cols-5' : 'grid-cols-4'}`}>
+        {steps.map((step, index) => {
+          const active = step.active
+          const done = step.done
+          const last = index === steps.length - 1
+          return (
+            <div key={`${order.id}-${step.key}`} className="relative min-w-0">
+              {!last ? (
+                <div
+                  className="absolute left-[calc(50%+18px)] right-[-14px] top-4 h-[2px]"
+                  style={{ backgroundColor: done ? '#16a34a' : 'rgba(148,163,184,.35)' }}
                 />
               ) : null}
-              {index < steps.length - 1 ? (
-                <span
-                  className="absolute left-1/2 right-0 top-1/2 h-[2px] -translate-y-1/2"
-                  style={{ backgroundColor: step.done ? '#7c3aed' : 'rgba(148,163,184,.35)' }}
-                />
-              ) : null}
-              <span
-                className="relative z-10 grid h-7 w-7 place-items-center rounded-full border text-xs font-bold"
-                style={{
-                  borderColor: step.done ? '#7c3aed' : 'rgba(148,163,184,.35)',
-                  backgroundColor: step.done ? 'rgba(124,58,237,.12)' : 'white',
-                  color: step.done ? '#6d28d9' : '#94a3b8',
-                }}
-              >
-                {step.done ? '✓' : '•'}
-              </span>
+              <div className="flex flex-col items-center gap-2 text-center">
+                <div
+                  className="grid h-8 w-8 place-items-center rounded-full border"
+                  style={{
+                    borderColor: done || active ? '#16a34a' : 'rgba(148,163,184,.35)',
+                    backgroundColor: done || active ? 'rgba(34,197,94,.12)' : 'white',
+                    color: done || active ? '#15803d' : '#94a3b8',
+                  }}
+                >
+                  {done || active ? <CheckMiniIcon /> : <DotIcon />}
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold leading-tight">{step.label}</p>
+                  <p className="mt-1 text-[10px] leading-tight" style={{ color: 'var(--muted)' }}>
+                    {step.date
+                      ? compactDate(step.date)
+                      : done
+                        ? 'Completado'
+                        : active
+                          ? 'Actual'
+                          : 'Pendiente'}
+                  </p>
+                </div>
+              </div>
             </div>
-            <span className="text-xs font-medium">{step.label}</span>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )
+}
+
+function buildChefStatusDateMap(order) {
+  const timeline = Array.isArray(order?.timeline) ? [...order.timeline] : []
+  timeline.sort((a, b) => new Date(a.occurred_at) - new Date(b.occurred_at))
+
+  const map = {
+    AWAITING_CHEF_CONFIRMATION: order.created_at,
+  }
+
+  for (const entry of timeline) {
+    const toStatus = entry.to_status || inferChefStatusFromTimelineEntry(entry)
+    if (!toStatus || map[toStatus]) continue
+    map[toStatus] = entry.occurred_at
+  }
+
+  return map
+}
+
+function inferChefStatusFromTimelineEntry(entry) {
+  const eventCode = entry?.event_code || ''
+  const metadataStatus = entry?.metadata?.to_status
+  if (metadataStatus) return metadataStatus
+  const map = {
+    ORDER_ACCEPTED: 'ACCEPTED',
+    ORDER_REJECTED: 'REJECTED',
+    ORDER_PREPARING: 'PREPARING',
+    ORDER_READY_FOR_PICKUP: 'READY_FOR_PICKUP',
+    ORDER_READY_FOR_DELIVERY: 'READY_FOR_DELIVERY',
+    DELIVERY_STARTED: 'OUT_FOR_DELIVERY',
+    ORDER_DELIVERED: 'DELIVERED',
+    PICKUP_CONFIRMED: 'PICKED_UP',
+    ORDER_CANCELLED: 'CANCELLED',
+  }
+  return map[eventCode] || ''
+}
+
+function chefProgressIndex(status, isPickup) {
+  if (['REJECTED', 'CANCELLED', 'EXPIRED'].includes(status)) return 0
+  const deliveryMap = {
+    PAYMENT_VALIDATING: 0,
+    AWAITING_CHEF_CONFIRMATION: 0,
+    ACCEPTED: 1,
+    PREPARING: 2,
+    READY_FOR_DELIVERY: 3,
+    OUT_FOR_DELIVERY: 3,
+    DELIVERED: 4,
+  }
+  const pickupMap = {
+    PAYMENT_VALIDATING: 0,
+    AWAITING_CHEF_CONFIRMATION: 0,
+    ACCEPTED: 1,
+    PREPARING: 2,
+    READY_FOR_PICKUP: 3,
+    PICKED_UP: 4,
+  }
+  const map = isPickup ? pickupMap : deliveryMap
+  return typeof map[status] === 'number' ? map[status] : 0
+}
+
+function chefStepCompleted(status, stepKey, isPickup) {
+  const steps = isPickup
+    ? ['AWAITING_CHEF_CONFIRMATION', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP', 'PICKED_UP']
+    : ['AWAITING_CHEF_CONFIRMATION', 'ACCEPTED', 'PREPARING', 'READY_FOR_DELIVERY', 'DELIVERED']
+  return steps.indexOf(status) > steps.indexOf(stepKey)
 }
 
 function FilterSelect({ value, onChange, options }) {
@@ -650,6 +728,18 @@ function BagIcon() {
       <path d="M9 8V7a3 3 0 0 1 6 0v1" />
     </svg>
   )
+}
+
+function CheckMiniIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m5 12 4 4 10-10" />
+    </svg>
+  )
+}
+
+function DotIcon() {
+  return <span className="block h-2.5 w-2.5 rounded-full bg-current" />
 }
 
 function EyeIcon() {

@@ -1,6 +1,8 @@
 import { createPortal } from 'react-dom'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import LastLoadedNotice from '../../../shared/components/LastLoadedNotice'
+import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache'
 import ReceiptActions from '../components/ReceiptActions'
 import RepeatOrderSummaryModal from '../components/RepeatOrderSummaryModal'
 import { cancelMyOrder, fetchMyOrders, repeatMyOrder } from '../services/order_service'
@@ -35,6 +37,7 @@ export default function ClientOrdersPage() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [offlineMeta, setOfflineMeta] = useState(null)
   const [busyOrderId, setBusyOrderId] = useState('')
   const [repeatBusyOrderId, setRepeatBusyOrderId] = useState('')
   const [search, setSearch] = useState('')
@@ -54,7 +57,9 @@ export default function ClientOrdersPage() {
     try {
       const data = await fetchMyOrders()
       setItems(data.items || [])
+      setOfflineMeta(extractScreenSnapshotMeta(data))
     } catch (error) {
+      setOfflineMeta(null)
       setMessage(error?.response?.data?.detail || 'No se pudieron cargar tus pedidos.')
     } finally {
       setLoading(false)
@@ -176,6 +181,7 @@ export default function ClientOrdersPage() {
       </div>
 
       {message ? <div className="rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--line)' }}>{message}</div> : null}
+      {offlineMeta ? <LastLoadedNotice cachedAt={offlineMeta.cachedAt} /> : null}
 
       <section className="rounded-[28px] border p-5 space-y-5" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
         <div className="grid gap-3 xl:grid-cols-[1.3fr_repeat(3,minmax(0,1fr))]">

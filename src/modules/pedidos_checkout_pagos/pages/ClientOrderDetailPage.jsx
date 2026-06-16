@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate, useParams } from 'react-router-dom'
+import LastLoadedNotice from '../../../shared/components/LastLoadedNotice'
+import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache'
 import ReceiptActions from '../components/ReceiptActions'
 import RepeatOrderSummaryModal from '../components/RepeatOrderSummaryModal'
 import { cancelMyOrder, fetchMyOrderDetail, repeatMyOrder } from '../services/order_service'
@@ -13,6 +15,7 @@ export default function ClientOrderDetailPage() {
   const [cancelling, setCancelling] = useState(false)
   const [repeating, setRepeating] = useState(false)
   const [message, setMessage] = useState('')
+  const [offlineMeta, setOfflineMeta] = useState(null)
   const [timelineOpen, setTimelineOpen] = useState(false)
   const [repeatSummary, setRepeatSummary] = useState(null)
 
@@ -26,7 +29,9 @@ export default function ClientOrderDetailPage() {
     try {
       const data = await fetchMyOrderDetail(id)
       setOrder(data.order || null)
+      setOfflineMeta(extractScreenSnapshotMeta(data))
     } catch (error) {
+      setOfflineMeta(null)
       setMessage(error?.response?.data?.detail || 'No se pudo cargar el detalle del pedido.')
     } finally {
       setLoading(false)
@@ -94,6 +99,7 @@ export default function ClientOrderDetailPage() {
       </div>
 
       {message ? <div className="rounded-xl border p-3 text-sm" style={{ borderColor: 'var(--line)' }}>{message}</div> : null}
+      {offlineMeta ? <LastLoadedNotice cachedAt={offlineMeta.cachedAt} /> : null}
       {!order ? <div className="rounded-xl border p-4" style={{ borderColor: 'var(--line)' }}>No se encontro el pedido.</div> : null}
 
       {order ? (

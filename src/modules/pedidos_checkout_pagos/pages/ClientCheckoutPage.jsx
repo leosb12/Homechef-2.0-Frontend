@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import LastLoadedNotice from '../../../shared/components/LastLoadedNotice'
+import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache'
 import CheckoutDeliveryMap from '../components/CheckoutDeliveryMap'
 import { fetchCart } from '../services/cart_service'
 import {
@@ -32,6 +34,7 @@ export default function ClientCheckoutPage() {
   const [routeLoading, setRouteLoading] = useState(false)
   const [routePreview, setRoutePreview] = useState(null)
   const [message, setMessage] = useState('')
+  const [offlineMeta, setOfflineMeta] = useState(null)
   const [success, setSuccess] = useState(null)
   const [form, setForm] = useState({
     fulfillment_type: 'pickup',
@@ -82,8 +85,12 @@ export default function ClientCheckoutPage() {
         const initialPreview = await previewCheckout(buildPayload(targetCart.id, form))
         setPreview(initialPreview)
         setPreviewStale(false)
+        setOfflineMeta(extractScreenSnapshotMeta(cartData, initialPreview))
+      } else {
+        setOfflineMeta(extractScreenSnapshotMeta(cartData))
       }
     } catch (error) {
+      setOfflineMeta(null)
       setMessage(error?.response?.data?.detail || 'No se pudo cargar el checkout.')
     } finally {
       setLoading(false)
@@ -193,9 +200,11 @@ export default function ClientCheckoutPage() {
       const data = await previewCheckout(nextPayload || buildPayload(cartId, form))
       setPreview(data)
       setPreviewStale(false)
+      setOfflineMeta(extractScreenSnapshotMeta(data))
       return data
     } catch (error) {
       setPreview(null)
+      setOfflineMeta(null)
       setMessage(
         error?.response?.data?.detail ||
           'No se pudo actualizar el resumen del checkout.',
@@ -219,6 +228,9 @@ export default function ClientCheckoutPage() {
         longitude,
       })
       setRoutePreview(data)
+      if (data?.__offline) {
+        setOfflineMeta(extractScreenSnapshotMeta(data))
+      }
     } catch {
       setRoutePreview(null)
     } finally {
@@ -361,6 +373,7 @@ export default function ClientCheckoutPage() {
           {message}
         </div>
       ) : null}
+      {offlineMeta ? <LastLoadedNotice cachedAt={offlineMeta.cachedAt} /> : null}
 
       <div className="grid gap-4 lg:grid-cols-[1.1fr_.9fr]">
         <section

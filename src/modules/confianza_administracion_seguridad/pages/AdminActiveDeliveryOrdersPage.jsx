@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
+import LastLoadedNotice from '../../../shared/components/LastLoadedNotice'
+import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache'
 import {
   fetchActiveDeliveryOrderDetail,
   fetchActiveDeliveryOrders,
@@ -33,6 +35,7 @@ export default function AdminActiveDeliveryOrdersPage() {
   const [loading, setLoading] = useState(true)
   const [detailLoading, setDetailLoading] = useState(false)
   const [error, setError] = useState('')
+  const [offlineMeta, setOfflineMeta] = useState(null)
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [search, setSearch] = useState('')
   const [items, setItems] = useState([])
@@ -51,10 +54,12 @@ export default function AdminActiveDeliveryOrdersPage() {
       const payload = await fetchActiveDeliveryOrders()
       setItems(payload.items || [])
       setSummary(payload.summary || {})
+      setOfflineMeta(extractScreenSnapshotMeta(payload))
       if (selectedOrderId) {
         await loadDetail(selectedOrderId)
       }
     } catch (err) {
+      setOfflineMeta(null)
       setError(
         err?.response?.data?.detail ||
           err?.message ||
@@ -72,6 +77,9 @@ export default function AdminActiveDeliveryOrdersPage() {
     try {
       const payload = await fetchActiveDeliveryOrderDetail(orderId)
       setSelectedOrder(payload.order || null)
+      if (payload?.__offline) {
+        setOfflineMeta(extractScreenSnapshotMeta(payload))
+      }
     } catch (err) {
       setError(
         err?.response?.data?.detail ||
@@ -123,7 +131,7 @@ export default function AdminActiveDeliveryOrdersPage() {
           </h1>
           <p className="mt-2 text-[15px]" style={{ color: 'var(--muted)' }}>
             Supervisa pedidos listos o en ruta, el repartidor asignado y el
-            historial de reasignacion por cercania.
+            flujo de oferta, aceptacion y tablero abierto.
           </p>
         </div>
         <button
@@ -216,6 +224,7 @@ export default function AdminActiveDeliveryOrdersPage() {
           {error}
         </div>
       ) : null}
+      {offlineMeta ? <LastLoadedNotice cachedAt={offlineMeta.cachedAt} /> : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.45fr_.95fr]">
         <section
@@ -280,6 +289,12 @@ export default function AdminActiveDeliveryOrdersPage() {
                           label={item.delivery_assignment.status_label || 'Sin asignar'}
                           tone={item.delivery_assignment.delivery_user ? 'violet' : 'orange'}
                         />
+                        <div className="mt-2 text-xs" style={{ color: 'var(--muted)' }}>
+                          {flowStateLabel(
+                            item.delivery_assignment.flow_state,
+                            item.delivery_assignment.open_board_enabled,
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-5 align-top">
                         {item.delivery_assignment.estimated_distance_human || '-'}
@@ -315,7 +330,7 @@ export default function AdminActiveDeliveryOrdersPage() {
             <div>
               <h2 className="text-xl font-bold">Detalle operativo</h2>
               <p className="mt-1 text-sm" style={{ color: 'var(--muted)' }}>
-                Historial y cola de asignacion del pedido seleccionado.
+                Cola operativa y bitacora del pedido seleccionado.
               </p>
             </div>
             {detailLoading ? <span className="text-sm">Cargando...</span> : null}
@@ -336,10 +351,18 @@ export default function AdminActiveDeliveryOrdersPage() {
                   ['Cocinero', selectedOrder.chef?.name || '-'],
                   ['Estado pedido', selectedOrder.status_label],
                   ['Estado delivery', selectedOrder.delivery_assignment?.status_label || 'Sin asignar'],
+                  ['Flujo actual', flowStateLabel(
+                    selectedOrder.delivery_assignment?.operational_context?.flow_state,
+                    selectedOrder.delivery_assignment?.operational_context?.open_board_enabled,
+                  )],
                   ['Repartidor', selectedOrder.delivery_assignment?.delivery_user?.name || 'Sin asignar'],
                   ['Intentos', String(selectedOrder.delivery_assignment?.operational_context?.attempt_count || 0)],
                   ['Distancia', selectedOrder.delivery_assignment?.operational_context?.estimated_distance_human || '-'],
                   ['Ultimo intento', formatDate(selectedOrder.delivery_assignment?.operational_context?.last_attempt_at)],
+                  ['Oferta pendiente', selectedOrder.delivery_assignment?.operational_context?.pending_delivery_name || '-'],
+                  ['Expira oferta', formatDate(selectedOrder.delivery_assignment?.operational_context?.pending_expires_at)],
+                  ['Tablero abierto', selectedOrder.delivery_assignment?.operational_context?.open_board_enabled ? 'Si' : 'No'],
+                  ['Motivo apertura', selectedOrder.delivery_assignment?.operational_context?.open_board_reason || '-'],
                 ]}
               />
 
@@ -367,17 +390,18 @@ export default function AdminActiveDeliveryOrdersPage() {
               />
 
               <DetailList
-                title="Historial de reasignacion"
-                items={selectedOrder.delivery_assignment?.operational_context?.reassignment_history || []}
+                title="Bitacora del flujo"
+                items={(selectedOrder.delivery_assignment?.operational_context?.flow_audit || []).map((item) => ({
+                  ...item,
+                  reason: item.delivery_name || item.reason || item.event_code,
+                  distance_human: item.distance_human || item.label || item.event_code,
+                  at: item.occurred_at,
+                }))}
                 renderItem={(item) => (
                   <div className="rounded-2xl border px-4 py-3"
                     style={{ borderColor: 'rgba(148,163,184,.18)' }}
                   >
-                    <p className="font-semibold">
-                      {item.from_delivery_name || 'Sin repartidor'}
-                      {' -> '}
-                      {item.to_delivery_name || 'Sin repartidor'}
-                    </p>
+                    <p className="font-semibold">{item.label || item.event_code}</p>
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
                       {item.reason} · {item.distance_human || '-'} · {formatDate(item.at)}
                     </p>
@@ -469,6 +493,18 @@ function StatusBadge({ label, tone }) {
       {label}
     </span>
   )
+}
+
+function flowStateLabel(value, openBoardEnabled) {
+  if (openBoardEnabled) return 'Tablero abierto'
+  const labels = {
+    IDLE: 'Sin iniciar',
+    OFFER_PENDING: 'Oferta pendiente',
+    WAITING_ROUND_2: 'Esperando segunda ronda',
+    OPEN_BOARD: 'Tablero abierto',
+    ASSIGNED: 'Asignada',
+  }
+  return labels[value] || '-'
 }
 
 function shortId(value) {

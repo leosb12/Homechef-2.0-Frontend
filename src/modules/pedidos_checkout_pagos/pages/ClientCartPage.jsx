@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import LastLoadedNotice from '../../../shared/components/LastLoadedNotice'
+import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache'
 import { fetchCart, removeCartItem, updateCartItem } from '../services/cart_service'
 
 export default function ClientCartPage() {
@@ -10,6 +12,7 @@ export default function ClientCartPage() {
   const [selectedCartId, setSelectedCartId] = useState('')
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
+  const [offlineMeta, setOfflineMeta] = useState(null)
   const [busyItemId, setBusyItemId] = useState('')
   const requestedCartId = searchParams.get('cart_id') || ''
   const repeatSummary = location.state?.repeatSummary || null
@@ -20,9 +23,14 @@ export default function ClientCartPage() {
 
   async function loadCart() {
     setLoading(true)
+    setMessage('')
     try {
       const data = await fetchCart()
       setCartData(data)
+      setOfflineMeta(extractScreenSnapshotMeta(data))
+      if (data?.__offline) {
+        setMessage('')
+      }
       setSelectedCartId((current) => {
         if (requestedCartId && data.carts?.some((cart) => cart.id === requestedCartId)) {
           return requestedCartId
@@ -31,6 +39,7 @@ export default function ClientCartPage() {
         return data.carts?.[0]?.id || ''
       })
     } catch (error) {
+      setOfflineMeta(null)
       setMessage(error?.response?.data?.detail || 'No se pudo cargar el carrito.')
     } finally {
       setLoading(false)
@@ -111,6 +120,7 @@ export default function ClientCartPage() {
           {message}
         </div>
       )}
+      {offlineMeta ? <LastLoadedNotice cachedAt={offlineMeta.cachedAt} /> : null}
 
       {repeatSummary ? (
         <div className="rounded-2xl border p-4" style={{ borderColor: 'rgba(34,197,94,.18)', backgroundColor: 'rgba(34,197,94,.08)' }}>

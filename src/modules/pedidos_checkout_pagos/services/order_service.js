@@ -1,11 +1,12 @@
 import { api, cachedGet, invalidateApiCache } from '../../../shared/services/api'
+import { readWithScreenCache } from '../../../shared/services/screen_cache'
 
 export async function fetchMyOrders() {
-  return cachedGet('/orders/my-orders/')
+  return readWithScreenCache('mod5.clientOrders', () => cachedGet('/orders/my-orders/'))
 }
 
 export async function fetchMyOrderDetail(orderId) {
-  return cachedGet(`/orders/my-orders/${orderId}/`)
+  return readWithScreenCache(`mod5.clientOrder.${orderId}`, () => cachedGet(`/orders/my-orders/${orderId}/`))
 }
 
 export async function cancelMyOrder(orderId) {
@@ -22,11 +23,11 @@ export async function repeatMyOrder(orderId) {
 }
 
 export async function fetchChefOrders() {
-  return cachedGet('/orders/chef/orders/')
+  return readWithScreenCache('mod5.chefOrders', () => cachedGet('/orders/chef/orders/'))
 }
 
 export async function fetchChefOrderDetail(orderId) {
-  return cachedGet(`/orders/chef/orders/${orderId}/`)
+  return readWithScreenCache(`mod5.chefOrder.${orderId}`, () => cachedGet(`/orders/chef/orders/${orderId}/`))
 }
 
 export async function chefAcceptOrder(orderId) {
