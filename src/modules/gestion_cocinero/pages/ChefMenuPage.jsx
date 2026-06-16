@@ -1,111 +1,135 @@
-import { useEffect, useMemo, useState } from 'react'
-import { fetchChefDishes, fetchChefMenu, saveChefMenu } from '../services/chef_service'
-import LoadingButton from '../components/LoadingButton'
+import { useEffect, useMemo, useState } from "react";
+import {
+  fetchChefDishes,
+  fetchChefMenu,
+  saveChefMenu,
+} from "../services/chef_service";
+import LoadingButton from "../components/LoadingButton";
 
 const ITEM_STATUS_OPTIONS = [
-  { value: 'available', label: 'Disponible' },
-  { value: 'paused', label: 'Pausado' },
-  { value: 'sold_out', label: 'Agotado' },
-]
+  { value: "available", label: "Disponible" },
+  { value: "paused", label: "Pausado" },
+  { value: "sold_out", label: "Agotado" },
+];
 
 function normalizeItem(item) {
   return {
-    dish_id: String(item.dish_id || ''),
-    name: item.name || '',
-    portions: Number(item.portions || 1),
-    status: item.status || 'available',
-  }
+    dish_id: String(item.dish_id || ""),
+    name: item.name || "",
+    portions:
+      item.portions !== undefined && item.portions !== null
+        ? Number(item.portions)
+        : 1,
+    status: item.status || "available",
+  };
 }
 
 export default function ChefMenuPage() {
-  const [dishes, setDishes] = useState([])
-  const [search, setSearch] = useState('')
-  const [menuItems, setMenuItems] = useState([])
-  const [selectedDishId, setSelectedDishId] = useState('')
-  const [schedule, setSchedule] = useState('')
-  const [isActive, setIsActive] = useState(true)
-  const [message, setMessage] = useState('')
-  const [isError, setIsError] = useState(false)
-  const [loadingAction, setLoadingAction] = useState('')
+  const [dishes, setDishes] = useState([]);
+  const [search, setSearch] = useState("");
+  const [menuItems, setMenuItems] = useState([]);
+  const [selectedDishId, setSelectedDishId] = useState("");
+  const [schedule, setSchedule] = useState("");
+  const [isActive, setIsActive] = useState(true);
+  const [message, setMessage] = useState("");
+  const [isError, setIsError] = useState(false);
+  const [loadingAction, setLoadingAction] = useState("");
 
   const setNotice = (text, error = false) => {
-    setIsError(error)
-    setMessage(text)
-  }
+    setIsError(error);
+    setMessage(text);
+  };
 
   const load = async ({ keepMessage = false } = {}) => {
     try {
-      const [dishesData, menuData] = await Promise.all([fetchChefDishes(), fetchChefMenu()])
-      const dishItems = dishesData.items || []
-      const items = (menuData.items || []).map(normalizeItem)
-      setDishes(dishItems)
-      setMenuItems(items)
-      setSchedule(menuData.schedule || '')
-      setIsActive(menuData.is_active ?? true)
-      if (items.length) setSelectedDishId(items[0].dish_id)
-      if (!keepMessage) setNotice('')
+      const [dishesData, menuData] = await Promise.all([
+        fetchChefDishes(),
+        fetchChefMenu(),
+      ]);
+      const dishItems = dishesData.items || [];
+      const items = (menuData.items || []).map(normalizeItem);
+      setDishes(dishItems);
+      setMenuItems(items);
+      setSchedule(menuData.schedule || "");
+      setIsActive(menuData.is_active ?? true);
+      if (items.length) setSelectedDishId(items[0].dish_id);
+      if (!keepMessage) setNotice("");
     } catch (err) {
-      setNotice(err?.response?.data?.detail || 'No se pudo cargar menu del dia.', true)
+      setNotice(
+        err?.response?.data?.detail || "No se pudo cargar menu del dia.",
+        true,
+      );
     }
-  }
+  };
 
   useEffect(() => {
-    load()
-  }, [])
+    load();
+  }, []);
 
   const dishesWithMenuState = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = search.trim().toLowerCase();
     return dishes
-      .filter((dish) => (!q ? true : (dish.name || '').toLowerCase().includes(q)))
+      .filter((dish) =>
+        !q ? true : (dish.name || "").toLowerCase().includes(q),
+      )
       .map((dish) => {
-        const current = menuItems.find((x) => x.dish_id === dish._id)
+        const current = menuItems.find((x) => x.dish_id === dish._id);
         return {
           ...dish,
           in_menu: !!current,
           menu_item: current || null,
-        }
-      })
-  }, [dishes, menuItems, search])
+        };
+      });
+  }, [dishes, menuItems, search]);
 
   const selectedMenuItem = useMemo(
     () => menuItems.find((x) => x.dish_id === selectedDishId) || null,
     [menuItems, selectedDishId],
-  )
+  );
 
   const addToMenu = (dish) => {
     if (menuItems.some((x) => x.dish_id === dish._id)) {
-      setNotice(`${dish.name} ya esta en el menu.`, true)
-      return
+      setNotice(`${dish.name} ya esta en el menu.`, true);
+      return;
     }
     const next = {
       dish_id: dish._id,
       name: dish.name,
-      portions: Number(dish.portions || 1),
-      status: dish.status === 'paused' ? 'paused' : 'available',
-    }
-    setMenuItems((prev) => [...prev, next])
-    setSelectedDishId(dish._id)
-    setNotice(`${dish.name} agregado al menu. Recuerda actualizar para guardar cambios.`)
-  }
+      portions:
+        dish.portions !== undefined && dish.portions !== null
+          ? Number(dish.portions)
+          : 1,
+      status: dish.status === "paused" ? "paused" : "available",
+    };
+    setMenuItems((prev) => [...prev, next]);
+    setSelectedDishId(dish._id);
+    setNotice(
+      `${dish.name} agregado al menu. Recuerda actualizar para guardar cambios.`,
+    );
+  };
 
   const removeFromMenu = (dishId) => {
-    const current = menuItems.find((x) => x.dish_id === dishId)
-    setMenuItems((prev) => prev.filter((x) => x.dish_id !== dishId))
-    if (selectedDishId === dishId) setSelectedDishId('')
-    setNotice(`${current?.name || 'Plato'} quitado del menu. Recuerda actualizar para guardar cambios.`)
-  }
+    const current = menuItems.find((x) => x.dish_id === dishId);
+    setMenuItems((prev) => prev.filter((x) => x.dish_id !== dishId));
+    if (selectedDishId === dishId) setSelectedDishId("");
+    setNotice(
+      `${current?.name || "Plato"} quitado del menu. Recuerda actualizar para guardar cambios.`,
+    );
+  };
 
-  const updateMenuItem = (dishId, patch, confirmation = '') => {
-    setMenuItems((prev) => prev.map((x) => (x.dish_id === dishId ? { ...x, ...patch } : x)))
-    if (confirmation) setNotice(confirmation)
-  }
+  const updateMenuItem = (dishId, patch, confirmation = "") => {
+    setMenuItems((prev) =>
+      prev.map((x) => (x.dish_id === dishId ? { ...x, ...patch } : x)),
+    );
+    if (confirmation) setNotice(confirmation);
+  };
 
   const saveMenu = async () => {
-    setLoadingAction('save-menu')
-    setNotice('')
+    setLoadingAction("save-menu");
+    setNotice("");
     try {
       const payload = {
-        schedule: String(schedule || '').trim(),
+        schedule: String(schedule || "").trim(),
         is_active: isActive,
         items: menuItems.map((x) => ({
           dish_id: x.dish_id,
@@ -113,60 +137,86 @@ export default function ChefMenuPage() {
           portions: Number(x.portions || 0),
           status: x.status,
         })),
-      }
-      await saveChefMenu(payload)
-      setNotice('Menu del dia actualizado correctamente.')
-      await load({ keepMessage: true })
+      };
+      await saveChefMenu(payload);
+      setNotice("Menu del dia actualizado correctamente.");
+      await load({ keepMessage: true });
     } catch (err) {
-      setNotice(err?.response?.data?.detail || 'No se pudo guardar el menu del dia.', true)
+      setNotice(
+        err?.response?.data?.detail || "No se pudo guardar el menu del dia.",
+        true,
+      );
     } finally {
-      setLoadingAction((current) => (current === 'save-menu' ? '' : current))
+      setLoadingAction((current) => (current === "save-menu" ? "" : current));
     }
-  }
+  };
 
-  const flashAction = (action, fn, errorMessage = 'No se pudo completar la accion.') => {
-    setLoadingAction(action)
+  const flashAction = (
+    action,
+    fn,
+    errorMessage = "No se pudo completar la accion.",
+  ) => {
+    setLoadingAction(action);
     try {
-      fn()
+      fn();
     } catch (err) {
-      setNotice(err?.message || errorMessage, true)
+      setNotice(err?.message || errorMessage, true);
     }
-    window.setTimeout(() => setLoadingAction((current) => (current === action ? '' : current)), 150)
-  }
+    window.setTimeout(
+      () => setLoadingAction((current) => (current === action ? "" : current)),
+      150,
+    );
+  };
 
   return (
     <section className="space-y-4">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Menu del dia</h1>
-          <p style={{ color: 'var(--muted)' }}>
-            Organiza los platos activos de la jornada, porciones y disponibilidad.
+          <p style={{ color: "var(--muted)" }}>
+            Organiza los platos activos de la jornada, porciones y
+            disponibilidad.
           </p>
         </div>
         <LoadingButton
           type="button"
           onClick={saveMenu}
           className="px-4 py-2 rounded-lg text-white font-semibold self-start sm:self-auto"
-          style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
-          loading={loadingAction === 'save-menu'}
+          style={{
+            background: "linear-gradient(90deg, var(--brand), var(--brand-2))",
+          }}
+          loading={loadingAction === "save-menu"}
           loadingLabel="Guardando..."
         >
           Actualizar menu
         </LoadingButton>
       </header>
-      {message && <p className={isError ? 'text-red-500' : 'text-emerald-500'}>{message}</p>}
+      {message && (
+        <p className={isError ? "text-red-500" : "text-emerald-500"}>
+          {message}
+        </p>
+      )}
 
       <div className="grid grid-cols-1 gap-4 min-[1024px]:grid-cols-[minmax(320px,1fr)_minmax(0,2fr)] items-start">
-        <aside className="rounded-xl border p-3 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
+        <aside
+          className="rounded-xl border p-3 space-y-3"
+          style={{
+            borderColor: "var(--line)",
+            backgroundColor: "var(--panel)",
+          }}
+        >
           <input
             className="h-11 w-full rounded-lg border px-3"
-            style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
+            style={{
+              borderColor: "var(--line)",
+              backgroundColor: "transparent",
+            }}
             placeholder="Buscar plato..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
 
-          <div className="text-sm" style={{ color: 'var(--muted)' }}>
+          <div className="text-sm" style={{ color: "var(--muted)" }}>
             Platos del cocinero: {dishes.length} | En menu: {menuItems.length}
           </div>
 
@@ -177,25 +227,47 @@ export default function ChefMenuPage() {
                 className="rounded-xl border p-2"
                 style={{
                   borderColor:
-                    selectedDishId === dish._id ? 'var(--brand)' : dish.in_menu ? 'var(--brand-2)' : 'var(--line)',
-                  backgroundColor: selectedDishId === dish._id ? 'var(--panel-soft)' : 'var(--panel)',
+                    selectedDishId === dish._id
+                      ? "var(--brand)"
+                      : dish.in_menu
+                        ? "var(--brand-2)"
+                        : "var(--line)",
+                  backgroundColor:
+                    selectedDishId === dish._id
+                      ? "var(--panel-soft)"
+                      : "var(--panel)",
                 }}
               >
                 <div className="flex gap-3">
-                  <div className="h-20 w-24 rounded-lg overflow-hidden border shrink-0" style={{ borderColor: 'var(--line)' }}>
+                  <div
+                    className="h-20 w-24 rounded-lg overflow-hidden border shrink-0"
+                    style={{ borderColor: "var(--line)" }}
+                  >
                     {dish.image_url ? (
-                      <img src={dish.image_url} alt={dish.name} className="h-full w-full object-cover" />
+                      <img
+                        src={dish.image_url}
+                        alt={dish.name}
+                        className="h-full w-full object-cover"
+                      />
                     ) : (
-                      <div className="h-full w-full grid place-items-center text-xs opacity-70">Sin foto</div>
+                      <div className="h-full w-full grid place-items-center text-xs opacity-70">
+                        Sin foto
+                      </div>
                     )}
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-xl truncate">{dish.name}</p>
-                    <p className="text-sm" style={{ color: 'var(--muted)' }}>
-                      Bs {Number(dish.price || 0).toFixed(2)} · {dish.portions || 0} porciones
+                    <p className="font-semibold text-xl truncate">
+                      {dish.name}
                     </p>
-                    <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                    <p className="text-sm" style={{ color: "var(--muted)" }}>
+                      Bs {Number(dish.price || 0).toFixed(2)} ·{" "}
+                      {dish.portions || 0} porciones
+                    </p>
+                    <p
+                      className="text-xs mt-1"
+                      style={{ color: "var(--muted)" }}
+                    >
                       Estado plato: {dish.status}
                     </p>
 
@@ -204,8 +276,12 @@ export default function ChefMenuPage() {
                         <LoadingButton
                           type="button"
                           className="px-2 py-1 text-xs rounded border"
-                          style={{ borderColor: 'var(--line)' }}
-                          onClick={() => flashAction(`add-${dish._id}`, () => addToMenu(dish))}
+                          style={{ borderColor: "var(--line)" }}
+                          onClick={() =>
+                            flashAction(`add-${dish._id}`, () =>
+                              addToMenu(dish),
+                            )
+                          }
                           loading={loadingAction === `add-${dish._id}`}
                           loadingLabel="..."
                         >
@@ -216,11 +292,13 @@ export default function ChefMenuPage() {
                           <LoadingButton
                             type="button"
                             className="px-2 py-1 text-xs rounded border"
-                            style={{ borderColor: 'var(--line)' }}
-                            onClick={() => flashAction(`select-${dish._id}`, () => {
-                              setSelectedDishId(dish._id)
-                              setNotice(`${dish.name} listo para editar.`)
-                            })}
+                            style={{ borderColor: "var(--line)" }}
+                            onClick={() =>
+                              flashAction(`select-${dish._id}`, () => {
+                                setSelectedDishId(dish._id);
+                                setNotice(`${dish.name} listo para editar.`);
+                              })
+                            }
                             loading={loadingAction === `select-${dish._id}`}
                             loadingLabel="..."
                           >
@@ -229,8 +307,12 @@ export default function ChefMenuPage() {
                           <LoadingButton
                             type="button"
                             className="px-2 py-1 text-xs rounded border"
-                            style={{ borderColor: 'var(--line)' }}
-                            onClick={() => flashAction(`remove-${dish._id}`, () => removeFromMenu(dish._id))}
+                            style={{ borderColor: "var(--line)" }}
+                            onClick={() =>
+                              flashAction(`remove-${dish._id}`, () =>
+                                removeFromMenu(dish._id),
+                              )
+                            }
                             loading={loadingAction === `remove-${dish._id}`}
                             loadingLabel="..."
                           >
@@ -244,37 +326,88 @@ export default function ChefMenuPage() {
               </article>
             ))}
             {!dishesWithMenuState.length && (
-              <p style={{ color: 'var(--muted)' }}>
+              <p style={{ color: "var(--muted)" }}>
                 No hay platos para mostrar. Registra platos en "Mis platos".
               </p>
             )}
           </div>
         </aside>
 
-        <section className="rounded-xl border p-4 space-y-4" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
+        <section
+          className="rounded-xl border p-4 space-y-4"
+          style={{
+            borderColor: "var(--line)",
+            backgroundColor: "var(--panel)",
+          }}
+        >
           <h2 className="text-2xl font-semibold">Composicion del menu</h2>
 
           <div className="grid sm:grid-cols-2 gap-3">
             <label className="block">
-              <p className="text-sm mb-1" style={{ color: 'var(--muted)' }}>Horario de menu</p>
-              <input
-                className="h-11 w-full rounded-lg border px-3"
-                style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
-                placeholder="Ej: 11:00 - 15:00"
-                value={schedule}
-                onChange={(e) => {
-                  setSchedule(e.target.value)
-                  setNotice('Horario del menu actualizado. Recuerda actualizar para guardar cambios.')
-                }}
-              />
+              <p className="text-sm mb-1" style={{ color: "var(--muted)" }}>
+                Horario de menu
+              </p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="time"
+                  className="h-11 w-full rounded-lg border px-3"
+                  style={{
+                    borderColor: "var(--line)",
+                    backgroundColor: "transparent",
+                  }}
+                  value={schedule.split("-")[0]?.trim() || ""}
+                  onChange={(e) => {
+                    const start = e.target.value;
+                    const end = schedule.split("-")[1]?.trim() || "";
+                    if (start && end) {
+                      const [h1, m1] = start.split(":").map(Number);
+                      const [h2, m2] = end.split(":").map(Number);
+                      if (h2 * 60 + m2 <= h1 * 60 + m1) {
+                        setNotice("La hora de fin debe ser posterior a la de inicio.", true);
+                        return;
+                      }
+                    }
+                    setSchedule(`${start} - ${end}`);
+                    setNotice("Horario del menu actualizado. Recuerda actualizar para guardar cambios.");
+                  }}
+                />
+                <span style={{ color: "var(--muted)" }}>a</span>
+                <input
+                  type="time"
+                  className="h-11 w-full rounded-lg border px-3"
+                  style={{
+                    borderColor: "var(--line)",
+                    backgroundColor: "transparent",
+                  }}
+                  value={schedule.split("-")[1]?.trim() || ""}
+                  onChange={(e) => {
+                    const start = schedule.split("-")[0]?.trim() || "";
+                    const end = e.target.value;
+                    if (start && end) {
+                      const [h1, m1] = start.split(":").map(Number);
+                      const [h2, m2] = end.split(":").map(Number);
+                      if (h2 * 60 + m2 <= h1 * 60 + m1) {
+                        setNotice("La hora de fin debe ser posterior a la de inicio.", true);
+                        return;
+                      }
+                    }
+                    setSchedule(`${start} - ${end}`);
+                    setNotice("Horario del menu actualizado. Recuerda actualizar para guardar cambios.");
+                  }}
+                />
+              </div>
             </label>
             <label className="flex items-end gap-2 pb-2">
               <input
                 type="checkbox"
                 checked={isActive}
                 onChange={(e) => {
-                  setIsActive(e.target.checked)
-                  setNotice(e.target.checked ? 'Menu activado. Recuerda actualizar para guardar cambios.' : 'Menu desactivado. Recuerda actualizar para guardar cambios.')
+                  setIsActive(e.target.checked);
+                  setNotice(
+                    e.target.checked
+                      ? "Menu activado. Recuerda actualizar para guardar cambios."
+                      : "Menu desactivado. Recuerda actualizar para guardar cambios.",
+                  );
                 }}
               />
               <span>Menu activo</span>
@@ -282,35 +415,65 @@ export default function ChefMenuPage() {
           </div>
 
           {!selectedMenuItem ? (
-            <div className="rounded-lg border p-4 text-sm" style={{ borderColor: 'var(--line)', color: 'var(--muted)' }}>
-              Selecciona un plato marcado en menu para editar porciones y estado.
+            <div
+              className="rounded-lg border p-4 text-sm"
+              style={{ borderColor: "var(--line)", color: "var(--muted)" }}
+            >
+              Selecciona un plato marcado en menu para editar porciones y
+              estado.
             </div>
           ) : (
-            <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+            <div
+              className="rounded-xl border p-4 space-y-3"
+              style={{
+                borderColor: "var(--line)",
+                backgroundColor: "var(--panel-soft)",
+              }}
+            >
               <p className="text-xl font-semibold">{selectedMenuItem.name}</p>
               <div className="grid sm:grid-cols-2 gap-3">
                 <label className="block">
-                  <p className="text-sm mb-1" style={{ color: 'var(--muted)' }}>Porciones para la jornada</p>
+                  <p className="text-sm mb-1" style={{ color: "var(--muted)" }}>
+                    Porciones para la jornada
+                  </p>
                   <input
                     type="number"
-                    min="1"
+                    min="0"
                     className="h-11 w-full rounded-lg border px-3"
-                    style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
+                    style={{
+                      borderColor: "var(--line)",
+                      backgroundColor: "transparent",
+                    }}
                     value={selectedMenuItem.portions}
                     onChange={(e) =>
-                      updateMenuItem(selectedMenuItem.dish_id, {
-                        portions: Math.max(1, Number(e.target.value || 1)),
-                      }, `Porciones de ${selectedMenuItem.name} actualizadas. Recuerda actualizar para guardar cambios.`)
+                      updateMenuItem(
+                        selectedMenuItem.dish_id,
+                        {
+                          portions: Math.max(0, Number(e.target.value || 0)),
+                        },
+                        `Porciones de ${selectedMenuItem.name} actualizadas. Recuerda actualizar para guardar cambios.`,
+                      )
                     }
                   />
                 </label>
                 <label className="block">
-                  <p className="text-sm mb-1" style={{ color: 'var(--muted)' }}>Disponibilidad</p>
+                  <p className="text-sm mb-1" style={{ color: "var(--muted)" }}>
+                    Disponibilidad
+                  </p>
                   <select
                     className="h-11 w-full rounded-lg border px-3"
-                    style={{ borderColor: 'var(--line)', backgroundColor: 'transparent' }}
+                    style={{
+                      borderColor: "var(--line)",
+                      backgroundColor: "transparent",
+                    }}
                     value={selectedMenuItem.status}
-                    onChange={(e) => updateMenuItem(selectedMenuItem.dish_id, { status: e.target.value }, `Disponibilidad de ${selectedMenuItem.name} actualizada. Recuerda actualizar para guardar cambios.`)}
+                    onChange={(e) =>
+                      updateMenuItem(
+                        selectedMenuItem.dish_id,
+                        { status: e.target.value },
+                        `Disponibilidad de ${selectedMenuItem.name} actualizada. Recuerda actualizar para guardar cambios.`,
+                      )
+                    }
                   >
                     {ITEM_STATUS_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -323,23 +486,32 @@ export default function ChefMenuPage() {
             </div>
           )}
 
-          <div className="rounded-lg border p-3" style={{ borderColor: 'var(--line)' }}>
+          <div
+            className="rounded-lg border p-3"
+            style={{ borderColor: "var(--line)" }}
+          >
             <p className="font-semibold mb-2">Resumen del menu</p>
             <ul className="space-y-1 text-sm">
               {menuItems.map((item) => (
-                <li key={item.dish_id} className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+                <li
+                  key={item.dish_id}
+                  className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-2"
+                >
                   <span>{item.name}</span>
-                  <span style={{ color: 'var(--muted)' }}>
+                  <span style={{ color: "var(--muted)" }}>
                     {item.portions} porciones · {item.status}
                   </span>
                 </li>
               ))}
             </ul>
-            {!menuItems.length && <p style={{ color: 'var(--muted)' }}>Aun no agregaste platos al menu del dia.</p>}
+            {!menuItems.length && (
+              <p style={{ color: "var(--muted)" }}>
+                Aun no agregaste platos al menu del dia.
+              </p>
+            )}
           </div>
         </section>
       </div>
-
     </section>
-  )
+  );
 }

@@ -26,8 +26,10 @@ import ClientQrSimulatedPaymentPage from '../../modules/pedidos_checkout_pagos/p
 import ChefOrdersPage from '../../modules/pedidos_checkout_pagos/pages/ChefOrdersPage'
 import ChefOrderDetailPage from '../../modules/pedidos_checkout_pagos/pages/ChefOrderDetailPage'
 import ChefDashboardPage from '../../modules/gestion_cocinero/pages/ChefDashboardPage'
+import ChefFinancesPage from '../../modules/gestion_cocinero/pages/ChefFinancesPage'
 import ChefDishesPage from '../../modules/gestion_cocinero/pages/ChefDishesPage'
 import ChefMenuPage from '../../modules/gestion_cocinero/pages/ChefMenuPage'
+import ChefInventoryPage from '../../modules/gestion_cocinero/pages/ChefInventoryPage'
 import ChefProfilePage from '../../modules/gestion_cocinero/pages/ChefProfilePage'
 import ChefAvailabilityPage from '../../modules/gestion_cocinero/pages/ChefAvailabilityPage'
 import AISubscriptionPage from '../../modules/gestion_usuarios_acceso_suscripcion/pages/AISubscriptionPage'
@@ -76,10 +78,11 @@ export default function AppRouter() {
 
       <Route path="/chef" element={<ChefLayout />}>
         <Route path="dashboard" element={<ChefDashboardPage />} />
+        <Route path="finances" element={<ChefFinancesPage />} />
         <Route path="dishes" element={<ChefDishesPage />} />
         <Route path="dishes/create" element={<Page title="Crear plato" />} />
         <Route path="menu" element={<ChefMenuPage />} />
-        <Route path="inventory" element={<Page title="Inventario" />} />
+        <Route path="inventory" element={<ChefInventoryPage />} />
         <Route path="availability" element={<ChefAvailabilityPage />} />
         <Route path="orders" element={<ChefOrdersPage />} />
         <Route path="orders/:id" element={<ChefOrderDetailPage />} />
