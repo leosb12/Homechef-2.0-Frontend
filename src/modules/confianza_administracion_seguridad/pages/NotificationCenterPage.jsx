@@ -208,6 +208,7 @@ function categoryLabel(value) {
     PAYMENT: 'Pago',
     DELIVERY: 'Delivery',
     INCIDENT: 'Incidencia',
+    INVENTORY: 'Inventario',
   }
   return map[value] || value
 }
