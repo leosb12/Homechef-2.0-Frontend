@@ -45,6 +45,11 @@ export default function PublicDishCard({ dish, onRestrictedAction, onViewDetail,
         {dish.is_available === false && (
           <p className="text-xs font-medium text-amber-700">No disponible temporalmente</p>
         )}
+        {typeof dish.available_portions === 'number' && (
+          <p className="text-xs" style={{ color: 'var(--muted)' }}>
+            Porciones disponibles: {dish.available_portions}
+          </p>
+        )}
         <p className="text-xl font-semibold" style={{ color: 'var(--brand-2)' }}>
           Precio aprox: Bs {Number(dish.approx_price).toFixed(2)}
         </p>

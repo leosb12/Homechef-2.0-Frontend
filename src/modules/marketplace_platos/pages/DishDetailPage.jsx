@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import { addCartItem } from '../../pedidos_checkout_pagos/services/cart_service'
 import {
-  addDishToCart,
   addFavorite,
   createDishReview,
   fetchDishDetail,
@@ -53,7 +53,7 @@ export default function DishDetailPage() {
   const onAddToCart = async () => {
     setMessage('')
     try {
-      const result = await addDishToCart(id, Number(quantity))
+      const result = await addCartItem({ dishId: id, quantity: Number(quantity) })
       setMessage(result.message || 'Agregado al carrito.')
     } catch (e) {
       setMessage(e?.response?.data?.detail || 'No se pudo agregar al carrito.')

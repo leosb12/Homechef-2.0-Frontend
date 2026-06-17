@@ -15,14 +15,29 @@ import ClientExplorePage from '../../modules/marketplace_platos/pages/ClientExpl
 import DishDetailPage from '../../modules/marketplace_platos/pages/DishDetailPage'
 import FavoritesPage from '../../modules/marketplace_platos/pages/FavoritesPage'
 import ChefPublicProfilePage from '../../modules/marketplace_platos/pages/ChefPublicProfilePage'
+import ClientCartPage from '../../modules/pedidos_checkout_pagos/pages/ClientCartPage'
+import ClientCheckoutPage from '../../modules/pedidos_checkout_pagos/pages/ClientCheckoutPage'
+import ClientCoinGateReturnPage from '../../modules/pedidos_checkout_pagos/pages/ClientCoinGateReturnPage'
+import ClientStripeReturnPage from '../../modules/pedidos_checkout_pagos/pages/ClientStripeReturnPage'
+import ClientOrderDetailPage from '../../modules/pedidos_checkout_pagos/pages/ClientOrderDetailPage'
+import ClientOrdersPage from '../../modules/pedidos_checkout_pagos/pages/ClientOrdersPage'
+import OrderTrackingPage from '../../modules/pedidos_checkout_pagos/pages/OrderTrackingPage'
+import ClientQrSimulatedPaymentPage from '../../modules/pedidos_checkout_pagos/pages/ClientQrSimulatedPaymentPage'
+import ChefOrdersPage from '../../modules/pedidos_checkout_pagos/pages/ChefOrdersPage'
+import ChefOrderDetailPage from '../../modules/pedidos_checkout_pagos/pages/ChefOrderDetailPage'
 import ChefDashboardPage from '../../modules/gestion_cocinero/pages/ChefDashboardPage'
+import ChefFinancesPage from '../../modules/gestion_cocinero/pages/ChefFinancesPage'
 import ChefDishesPage from '../../modules/gestion_cocinero/pages/ChefDishesPage'
 import ChefMenuPage from '../../modules/gestion_cocinero/pages/ChefMenuPage'
+import ChefInventoryPage from '../../modules/gestion_cocinero/pages/ChefInventoryPage'
 import ChefProfilePage from '../../modules/gestion_cocinero/pages/ChefProfilePage'
 import ChefAvailabilityPage from '../../modules/gestion_cocinero/pages/ChefAvailabilityPage'
 import AISubscriptionPage from '../../modules/gestion_usuarios_acceso_suscripcion/pages/AISubscriptionPage'
 import ChefIAHubPage from '../../modules/funciones_ia/pages/ChefIAHubPage'
 import ChefIAFunctionPage from '../../modules/funciones_ia/pages/ChefIAFunctionPage'
+import NotificationCenterPage from '../../modules/confianza_administracion_seguridad/pages/NotificationCenterPage'
+import AdminDeliveryDriversPage from '../../modules/confianza_administracion_seguridad/pages/AdminDeliveryDriversPage'
+import AdminActiveDeliveryOrdersPage from '../../modules/confianza_administracion_seguridad/pages/AdminActiveDeliveryOrdersPage'
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 
 function Page({ title }) { return <div><h2 className="text-xl font-semibold">{title}</h2></div> }
@@ -49,21 +64,30 @@ export default function AppRouter() {
         <Route path="dishes/:id" element={<DishDetailPage />} />
         <Route path="chefs/:id" element={<ChefPublicProfilePage />} />
         <Route path="favorites" element={<FavoritesPage />} />
-        <Route path="cart" element={<Page title="Carrito" />} />
-        <Route path="checkout" element={<Page title="Checkout" />} />
-        <Route path="orders" element={<Page title="Mis pedidos" />} />
-        <Route path="orders/:id/tracking" element={<Page title="Seguimiento de pedido" />} />
+        <Route path="cart" element={<ClientCartPage />} />
+        <Route path="checkout" element={<ClientCheckoutPage />} />
+        <Route path="payments/bitcoin-coingate/return" element={<ClientCoinGateReturnPage />} />
+        <Route path="payments/stripe/return" element={<ClientStripeReturnPage />} />
+        <Route path="payments/qr-simulado" element={<ClientQrSimulatedPaymentPage />} />
+        <Route path="orders" element={<ClientOrdersPage />} />
+        <Route path="orders/:id" element={<ClientOrderDetailPage />} />
+        <Route path="orders/:id/tracking" element={<OrderTrackingPage viewerRole="client" />} />
+        <Route path="notifications" element={<NotificationCenterPage viewerRole="client" />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
 
       <Route path="/chef" element={<ChefLayout />}>
         <Route path="dashboard" element={<ChefDashboardPage />} />
+        <Route path="finances" element={<ChefFinancesPage />} />
         <Route path="dishes" element={<ChefDishesPage />} />
         <Route path="dishes/create" element={<Page title="Crear plato" />} />
         <Route path="menu" element={<ChefMenuPage />} />
-        <Route path="inventory" element={<Page title="Inventario" />} />
+        <Route path="inventory" element={<ChefInventoryPage />} />
         <Route path="availability" element={<ChefAvailabilityPage />} />
-        <Route path="orders" element={<Page title="Pedidos recibidos" />} />
+        <Route path="orders" element={<ChefOrdersPage />} />
+        <Route path="orders/:id" element={<ChefOrderDetailPage />} />
+        <Route path="orders/:id/tracking" element={<OrderTrackingPage viewerRole="chef" />} />
+        <Route path="notifications" element={<NotificationCenterPage viewerRole="chef" />} />
         <Route path="ai/assistant" element={<ChefIAHubPage />} />
         <Route path="ai/:feature/use" element={<ChefIAFunctionPage />} />
         <Route path="ai/:feature" element={<ChefIAFunctionPage />} />
@@ -75,6 +99,8 @@ export default function AppRouter() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route path="dashboard" element={<Page title="Dashboard admin" />} />
         <Route path="users" element={<Page title="Usuarios" />} />
+        <Route path="delivery-drivers" element={<AdminDeliveryDriversPage />} />
+        <Route path="delivery-orders" element={<AdminActiveDeliveryOrdersPage />} />
         <Route path="chefs" element={<Page title="Cocineros" />} />
         <Route path="publications" element={<Page title="Publicaciones" />} />
         <Route path="fraud" element={<Page title="Fraude y riesgo" />} />
