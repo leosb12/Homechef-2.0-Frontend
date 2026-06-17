@@ -3,6 +3,7 @@ import RoleLayout from './RoleLayout'
 const links = [
   { to: '/admin/dashboard', label: 'Resumen general', icon: <SidebarIcon type="dashboard" /> },
   { to: '/admin/users', label: 'Usuarios', icon: <SidebarIcon type="users" /> },
+  { to: '/admin/chefs', label: 'Cocineros', icon: <SidebarIcon type="chef" /> },
   { to: '/admin/delivery-drivers', label: 'Repartidores', icon: <SidebarIcon type="delivery" /> },
   { to: '/admin/delivery-orders', label: 'Pedidos delivery', icon: <SidebarIcon type="route" /> },
   { to: '/admin/publications', label: 'Publicaciones', icon: <SidebarIcon type="publications" /> },
@@ -89,6 +90,14 @@ function SidebarIcon({ type, stroke = 'currentColor' }) {
           <path d="M5 20a7 7 0 0 1 14 0" />
           <path d="M18 8h3" />
           <path d="M19.5 6.5v3" />
+        </svg>
+      )
+    case 'chef':
+      return (
+        <svg {...common}>
+          <path d="M12 12a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" />
+          <path d="M5 20a7 7 0 0 1 14 0" />
+          <path d="m16 4 2-2 2 2" />
         </svg>
       )
     case 'delivery':
