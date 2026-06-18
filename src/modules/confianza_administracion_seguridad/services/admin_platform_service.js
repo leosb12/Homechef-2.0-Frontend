@@ -32,6 +32,11 @@ class AdminPlatformService {
     const response = await api.post(`/trust-admin/publications/${dishId}/action/`, { action });
     return response.data;
   }
+
+  async getQualityStats() {
+    const response = await api.get('/trust-admin/publicaciones/calidad/');
+    return response.data;
+  }
 }
 
 export default new AdminPlatformService();

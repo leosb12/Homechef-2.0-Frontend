@@ -43,6 +43,7 @@ import AdminActiveDeliveryOrdersPage from '../../modules/confianza_administracio
 import AdminUsersPage from '../../modules/confianza_administracion_seguridad/pages/AdminUsersPage'
 import AdminChefsValidationPage from '../../modules/confianza_administracion_seguridad/pages/AdminChefsValidationPage'
 import AdminPublicationsPage from '../../modules/confianza_administracion_seguridad/pages/AdminPublicationsPage'
+import AdminDashboardPage from '../../modules/confianza_administracion_seguridad/pages/AdminDashboardPage'
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 
 function Page({ title }) { return <div><h2 className="text-xl font-semibold">{title}</h2></div> }
@@ -105,7 +106,7 @@ export default function AppRouter() {
       </Route>
 
       <Route path="/admin" element={<AdminLayout />}>
-        <Route path="dashboard" element={<Page title="Dashboard admin" />} />
+        <Route path="dashboard" element={<AdminDashboardPage />} />
         <Route path="users" element={<AdminUsersPage />} />
         <Route path="delivery-drivers" element={<AdminDeliveryDriversPage />} />
         <Route path="delivery-orders" element={<AdminActiveDeliveryOrdersPage />} />
