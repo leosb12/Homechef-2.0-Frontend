@@ -57,6 +57,7 @@ describe('OrderTrackingPage', () => {
     render(<OrderTrackingPage viewerRole="client" />)
 
     expect(await screen.findByText('Seguimiento del pedido')).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /reportar incidencia/i }))
     await userEvent.selectOptions(screen.getByRole('combobox'), 'DELAY')
     await userEvent.type(screen.getByPlaceholderText(/describe lo ocurrido/i), 'Hubo un retraso corto')
     await userEvent.click(screen.getByRole('button', { name: /registrar incidencia/i }))

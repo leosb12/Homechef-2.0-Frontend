@@ -641,7 +641,16 @@ function TabButton({ active, onClick, label }) {
 }
 
 function EnumSelector({ label, options, selected, onToggle }) {
+  const [customText, setCustomText] = useState("");
   const availableOptions = options.filter((x) => !selected.includes(x));
+
+  const handleAddCustom = () => {
+    const clean = customText.trim().toUpperCase().replaceAll(" ", "_");
+    if (clean && !selected.includes(clean)) {
+      onToggle(clean);
+      setCustomText("");
+    }
+  };
 
   return (
     <div
@@ -659,6 +668,32 @@ function EnumSelector({ label, options, selected, onToggle }) {
         placeholder="Seleccionar..."
         formatOption={prettyLabel}
       />
+
+      <div className="flex gap-2 mt-2">
+        <input
+          type="text"
+          className="h-9 w-full rounded-lg border px-2 text-sm"
+          style={{ borderColor: "var(--line)", backgroundColor: "transparent" }}
+          placeholder={`Otro ${label.toLowerCase()}...`}
+          value={customText}
+          onChange={(e) => setCustomText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleAddCustom();
+            }
+          }}
+        />
+        <button
+          type="button"
+          className="h-9 w-10 shrink-0 rounded-lg border text-sm grid place-items-center font-bold"
+          style={{ borderColor: "var(--line)", backgroundColor: "var(--panel)" }}
+          onClick={handleAddCustom}
+          title={`Agregar ${label.toLowerCase()}`}
+        >
+          +
+        </button>
+      </div>
       <div className="flex flex-wrap gap-2 mt-3">
         {selected.map((item) => (
           <button
