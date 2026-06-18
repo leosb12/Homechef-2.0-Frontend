@@ -25,6 +25,8 @@ import OrderTrackingPage from '../../modules/pedidos_checkout_pagos/pages/OrderT
 import ClientQrSimulatedPaymentPage from '../../modules/pedidos_checkout_pagos/pages/ClientQrSimulatedPaymentPage'
 import ChefOrdersPage from '../../modules/pedidos_checkout_pagos/pages/ChefOrdersPage'
 import ChefOrderDetailPage from '../../modules/pedidos_checkout_pagos/pages/ChefOrderDetailPage'
+import ChefPendingPage from '../../modules/gestion_cocinero/pages/ChefPendingPage'
+import ChefRejectedPage from '../../modules/gestion_cocinero/pages/ChefRejectedPage'
 import ChefDashboardPage from '../../modules/gestion_cocinero/pages/ChefDashboardPage'
 import ChefFinancesPage from '../../modules/gestion_cocinero/pages/ChefFinancesPage'
 import ChefDishesPage from '../../modules/gestion_cocinero/pages/ChefDishesPage'
@@ -78,6 +80,9 @@ export default function AppRouter() {
         <Route path="notifications" element={<NotificationCenterPage viewerRole="client" />} />
         <Route path="profile" element={<ProfilePage />} />
       </Route>
+
+      <Route path="/chef/pending" element={<ChefPendingPage />} />
+      <Route path="/chef/rejected" element={<ChefRejectedPage />} />
 
       <Route path="/chef" element={<ChefLayout />}>
         <Route path="dashboard" element={<ChefDashboardPage />} />

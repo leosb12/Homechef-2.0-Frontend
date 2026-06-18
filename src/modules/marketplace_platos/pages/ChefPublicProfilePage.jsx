@@ -14,6 +14,7 @@ export default function ChefPublicProfilePage() {
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
   const [savingReview, setSavingReview] = useState(false)
+  const [reviewMessage, setReviewMessage] = useState({ text: '', type: '' })
 
   const load = async () => {
     setLoading(true)
@@ -68,15 +69,15 @@ export default function ChefPublicProfilePage() {
   const onSubmitReview = async (event) => {
     event.preventDefault()
     setSavingReview(true)
-    setMessage('')
+    setReviewMessage({ text: '', type: '' })
     try {
       await createChefReview(id, { rating: Number(rating), comment })
       setComment('')
       setRating(5)
-      setMessage('Reseña del cocinero publicada correctamente.')
+      setReviewMessage({ text: 'Reseña del cocinero publicada correctamente.', type: 'success' })
       await load()
     } catch (err) {
-      setMessage(err?.response?.data?.detail || 'No se pudo registrar la reseña.')
+      setReviewMessage({ text: err?.response?.data?.detail || 'No se pudo registrar la reseña.', type: 'error' })
     } finally {
       setSavingReview(false)
     }
@@ -168,6 +169,11 @@ export default function ChefPublicProfilePage() {
           <button disabled={savingReview} className="px-4 py-2 rounded-xl text-white font-semibold disabled:opacity-60" style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}>
             {savingReview ? 'Publicando...' : 'Publicar reseña'}
           </button>
+          {reviewMessage.text && (
+            <div className={`mt-2 p-3 text-sm rounded-xl border ${reviewMessage.type === 'error' ? 'text-red-600 bg-red-50 border-red-200' : 'text-green-600 bg-green-50 border-green-200'}`}>
+              {reviewMessage.text}
+            </div>
+          )}
         </form>
       </section>
 

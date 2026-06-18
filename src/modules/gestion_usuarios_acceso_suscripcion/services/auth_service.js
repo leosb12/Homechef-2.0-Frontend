@@ -2,24 +2,40 @@ import { api, cachedGet, invalidateApiCache } from '../../../shared/services/api
 import { supabase } from '../../../shared/services/supabase_client'
 
 export async function registerUser(payload) {
+  const isFormData = payload instanceof FormData
+  const dataObj = isFormData ? Object.fromEntries(payload.entries()) : payload
+  
   const metadata = {
-    first_name: payload.first_name,
-    last_name: payload.last_name,
-    full_name: `${payload.first_name || ''} ${payload.last_name || ''}`.trim(),
-    phone: payload.phone,
-    role: payload.role,
-    accept_terms: payload.accept_terms,
-    chef_specialties: payload.chef_specialties,
-    chef_latitude: payload.chef_latitude,
-    chef_longitude: payload.chef_longitude,
-    chef_schedule: payload.chef_schedule,
+    first_name: dataObj.first_name,
+    last_name: dataObj.last_name,
+    full_name: `${dataObj.first_name || ''} ${dataObj.last_name || ''}`.trim(),
+    phone: dataObj.phone,
+    role: dataObj.role,
+    accept_terms: isFormData ? dataObj.accept_terms === 'true' || dataObj.accept_terms === true : dataObj.accept_terms,
+    chef_specialties: dataObj.chef_specialties,
+    chef_latitude: dataObj.chef_latitude ? Number(dataObj.chef_latitude) : null,
+    chef_longitude: dataObj.chef_longitude ? Number(dataObj.chef_longitude) : null,
+    chef_schedule: dataObj.chef_schedule,
   }
 
-  const { data, error } = await supabase.auth.signUp({
-    email: payload.email,
-    password: payload.password,
+  let { data, error } = await supabase.auth.signUp({
+    email: dataObj.email,
+    password: dataObj.password,
     options: { data: metadata },
   })
+
+  // Self-healing: Si el usuario ya existía en Supabase (por un error previo en Django), intentamos hacer login
+  if (error && (error.message.toLowerCase().includes('already registered') || error.status === 422)) {
+    const signInRes = await supabase.auth.signInWithPassword({
+      email: dataObj.email,
+      password: dataObj.password,
+    })
+    if (!signInRes.error) {
+      data = signInRes.data
+      error = null
+    }
+  }
+
   if (error) throw error
 
   const supabaseUserId = data.user?.id
@@ -32,10 +48,17 @@ export async function registerUser(payload) {
     localStorage.setItem('homechef_access_token', access)
   }
 
-  await api.post('/auth/register/', {
-    ...withoutPasswords(payload),
-    supabase_user_id: supabaseUserId,
-  })
+  if (isFormData) {
+    payload.append('supabase_user_id', supabaseUserId)
+    payload.delete('password')
+    payload.delete('password_confirm')
+    await api.post('/auth/register/', payload)
+  } else {
+    await api.post('/auth/register/', {
+      ...withoutPasswords(payload),
+      supabase_user_id: supabaseUserId,
+    })
+  }
 
   if (access) {
     await supabase.auth.signOut()

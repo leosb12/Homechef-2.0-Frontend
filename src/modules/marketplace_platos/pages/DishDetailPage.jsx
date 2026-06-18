@@ -22,6 +22,7 @@ export default function DishDetailPage() {
   const [savingReview, setSavingReview] = useState(false)
   const [reviewRating, setReviewRating] = useState(5)
   const [reviewComment, setReviewComment] = useState('')
+  const [reviewMessage, setReviewMessage] = useState({ text: '', type: '' })
   const [dishReviewSort, setDishReviewSort] = useState('recent')
   const [chefReviewSort, setChefReviewSort] = useState('recent')
 
@@ -103,7 +104,7 @@ export default function DishDetailPage() {
 
   const onSubmitReview = async (event) => {
     event.preventDefault()
-    setMessage('')
+    setReviewMessage({ text: '', type: '' })
     setSavingReview(true)
     try {
       await createDishReview(id, { rating: Number(reviewRating), comment: reviewComment })
@@ -111,9 +112,9 @@ export default function DishDetailPage() {
       setDetail(fresh)
       setReviewRating(5)
       setReviewComment('')
-      setMessage('Reseña del plato publicada correctamente.')
+      setReviewMessage({ text: 'Reseña del plato publicada correctamente.', type: 'success' })
     } catch (e) {
-      setMessage(e?.response?.data?.detail || 'No se pudo registrar la reseña.')
+      setReviewMessage({ text: e?.response?.data?.detail || 'No se pudo registrar la reseña.', type: 'error' })
     } finally {
       setSavingReview(false)
     }
@@ -175,7 +176,7 @@ export default function DishDetailPage() {
 
           <p style={{ color: 'var(--muted)' }}>{detail.description}</p>
           <p className="text-xl font-semibold" style={{ color: 'var(--brand-2)' }}>Bs {Number(detail.approx_price).toFixed(2)}</p>
-          <p>Ingredientes: {detail.ingredients?.length ? detail.ingredients.join(', ') : 'No registrados'}</p>
+          <p>Ingredientes: {detail.ingredients?.length ? detail.ingredients.map(i => typeof i === 'string' ? i : `${i.name} (${i.quantity} ${i.unit})`).join(', ') : 'No registrados'}</p>
           <p>Etiquetas: {detail.tags?.length ? detail.tags.join(', ') : 'No registradas'}</p>
           <p>Alérgenos: {detail.allergens?.length ? detail.allergens.join(', ') : 'No reportados'}</p>
           <p>Porciones disponibles: {detail.available_portions}</p>
@@ -285,6 +286,12 @@ export default function DishDetailPage() {
             {savingReview ? 'Publicando...' : 'Publicar'}
           </button>
         </form>
+        
+        {reviewMessage.text && (
+          <p className={`text-sm px-3 py-2 rounded-xl border inline-block ${reviewMessage.type === 'error' ? 'text-red-600 bg-red-50 border-red-200' : 'text-green-600 bg-green-50 border-green-200'}`}>
+            {reviewMessage.text}
+          </p>
+        )}
 
         {dishReviews.length ? (
           <div className="space-y-2">

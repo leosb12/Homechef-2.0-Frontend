@@ -76,6 +76,19 @@ export default function AdminChefsValidationPage() {
                 <p><strong>Dirección:</strong> {c.address || 'No especificada'}</p>
                 <p><strong>Especialidades:</strong> {c.specialties || 'Ninguna'}</p>
               </div>
+              
+              {c.kitchen_photos && c.kitchen_photos.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-bold uppercase mb-2" style={{ color: 'var(--muted)' }}>Fotos de la Cocina</p>
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    {c.kitchen_photos.map((photo, i) => (
+                      <a key={i} href={photo} target="_blank" rel="noreferrer" className="block shrink-0">
+                        <img src={photo} alt={`Cocina ${i + 1}`} className="h-20 w-20 sm:h-24 sm:w-24 object-cover rounded-lg border" style={{ borderColor: 'var(--line)' }} />
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="mt-auto pt-4 flex gap-3">
                 <button
                   onClick={() => setConfirmChef({ chef: c, status: 'rejected' })}

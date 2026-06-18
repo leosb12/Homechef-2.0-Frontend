@@ -4,6 +4,7 @@ import maplibregl from 'maplibre-gl'
 import 'maplibre-gl/dist/maplibre-gl.css'
 import { registerUser } from '../services/auth_service'
 import { useThemeSession } from '../../../shared/services/theme_session'
+import DragDropImageUploader from '../../../shared/components/DragDropImageUploader'
 
 const SANTA_CRUZ = { lat: -17.7833, lng: -63.1821 }
 
@@ -19,6 +20,7 @@ const initialForm = {
   chef_latitude: SANTA_CRUZ.lat,
   chef_longitude: SANTA_CRUZ.lng,
   chef_schedule: '',
+  kitchen_photos: [],
   accept_terms: false,
 }
 
@@ -59,6 +61,16 @@ export default function RegisterPage() {
       chef_latitude: Number(lat.toFixed(6)),
       chef_longitude: Number(lng.toFixed(6)),
     }))
+  }
+
+  const onFilesChange = (event) => {
+    if (event.error) {
+      setError(event.error)
+      return
+    }
+    const files = Array.from(event.target.files)
+    setError('')
+    setForm((prev) => ({ ...prev, kitchen_photos: files }))
   }
 
   const onUseCurrentLocation = () => {
@@ -113,13 +125,28 @@ export default function RegisterPage() {
     setError('')
     setSuccess('')
     try {
-      const payload = { ...form }
-      if (payload.role !== 'COCINERO') {
+      let payload;
+      if (form.role === 'COCINERO') {
+        if (!form.kitchen_photos || form.kitchen_photos.length === 0) {
+          throw new Error('Debes subir al menos 1 foto de tu cocina.')
+        }
+        payload = new FormData()
+        Object.entries(form).forEach(([key, val]) => {
+          if (key === 'kitchen_photos') {
+            val.forEach((file) => payload.append('kitchen_photos', file))
+          } else {
+            payload.append(key, val)
+          }
+        })
+      } else {
+        payload = { ...form }
         delete payload.chef_specialties
         delete payload.chef_latitude
         delete payload.chef_longitude
         delete payload.chef_schedule
+        delete payload.kitchen_photos
       }
+
       await registerUser(payload)
       setSuccess('Registro exitoso. Ahora puedes iniciar sesion.')
       setTimeout(() => navigate('/login'), 900)
@@ -282,6 +309,15 @@ export default function RegisterPage() {
                     <Field label="Latitud" name="chef_latitude" value={String(form.chef_latitude)} onChange={onChange} placeholder="-17.7833" left="📍" required />
                     <Field label="Longitud" name="chef_longitude" value={String(form.chef_longitude)} onChange={onChange} placeholder="-63.1821" left="📍" required />
                   </div>
+                </div>
+
+                <div className="rounded-xl border p-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+                  <p className="font-semibold mb-2 text-sm" style={{ color: 'var(--text)' }}>Fotos de tu cocina</p>
+                  <DragDropImageUploader 
+                    value={form.kitchen_photos} 
+                    onFilesChange={onFilesChange} 
+                    maxFiles={3} 
+                  />
                 </div>
 
                 <Field label="Horario general" name="chef_schedule" value={form.chef_schedule} onChange={onChange} placeholder="Ej: Lun-Sab 09:00-18:00" left="🕒" required />
