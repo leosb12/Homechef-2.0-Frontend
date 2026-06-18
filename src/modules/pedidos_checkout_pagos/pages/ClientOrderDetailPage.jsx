@@ -5,6 +5,7 @@ import LastLoadedNotice from '../../../shared/components/LastLoadedNotice'
 import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache'
 import ReceiptActions from '../components/ReceiptActions'
 import RepeatOrderSummaryModal from '../components/RepeatOrderSummaryModal'
+import { createChefReview, createDishReview } from '../../marketplace_platos/services/public_dashboard_service'
 import { cancelMyOrder, fetchMyOrderDetail, repeatMyOrder } from '../services/order_service'
 
 export default function ClientOrderDetailPage() {
@@ -18,6 +19,8 @@ export default function ClientOrderDetailPage() {
   const [offlineMeta, setOfflineMeta] = useState(null)
   const [timelineOpen, setTimelineOpen] = useState(false)
   const [repeatSummary, setRepeatSummary] = useState(null)
+  const [ratingModalOpen, setRatingModalOpen] = useState(false)
+  const [ratingTarget, setRatingTarget] = useState(null)
 
   useEffect(() => {
     load()
@@ -173,6 +176,16 @@ export default function ClientOrderDetailPage() {
               >
                 Ver timeline
               </button>
+              {(order.status === 'DELIVERED' || order.status === 'PICKED_UP') && (
+                <button
+                  type="button"
+                  onClick={() => setRatingModalOpen(true)}
+                  className="px-4 py-2 rounded-lg text-white font-semibold shadow"
+                  style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
+                >
+                  Calificar pedido
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => navigate(`/client/orders/${order.id}/tracking`)}
@@ -269,6 +282,29 @@ export default function ClientOrderDetailPage() {
           setRepeatSummary(null)
         }}
       />
+
+      {order ? (
+        <RatingSelectionModal
+          open={ratingModalOpen && !ratingTarget}
+          order={order}
+          onClose={() => setRatingModalOpen(false)}
+          onSelect={(target) => setRatingTarget(target)}
+        />
+      ) : null}
+
+      {ratingTarget ? (
+        <ReviewFormModal
+          target={ratingTarget}
+          onClose={() => setRatingTarget(null)}
+          onSubmit={async (rating, comment) => {
+            if (ratingTarget.type === 'chef') {
+              await createChefReview(ratingTarget.id, { rating, comment })
+            } else {
+              await createDishReview(ratingTarget.id, { rating, comment })
+            }
+          }}
+        />
+      ) : null}
     </section>
   )
 }
@@ -394,6 +430,169 @@ function TimelineModal({ open, title, subtitle, entries, onClose }) {
     </div>
   )
 
+  if (typeof document === 'undefined') return modal
+  return createPortal(modal, document.body)
+}
+
+function RatingSelectionModal({ open, order, onClose, onSelect }) {
+  useEffect(() => {
+    if (!open || typeof document === 'undefined') return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [open])
+
+  if (!open) return null
+
+  const modal = (
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(15, 23, 42, 0.58)' }}
+      onClick={onClose}
+    >
+      <div
+        className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border shadow-xl"
+        style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b p-5" style={{ borderColor: 'var(--line)' }}>
+          <div>
+            <h2 className="text-xl font-semibold">Calificar experiencia</h2>
+            <p className="text-sm" style={{ color: 'var(--muted)' }}>¿Que te gustaria calificar de este pedido?</p>
+          </div>
+          <button type="button" onClick={onClose} className="h-10 w-10 rounded-lg border" style={{ borderColor: 'var(--line)' }}>
+            x
+          </button>
+        </div>
+        <div className="space-y-3 overflow-y-auto p-5">
+          {order.chef ? (
+            <button
+              onClick={() => onSelect({ type: 'chef', id: order.chef.id, name: order.chef.name })}
+              className="w-full text-left p-4 rounded-xl border flex items-center justify-between"
+              style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}
+            >
+              <div>
+                <p className="font-semibold text-orange-500">🧑‍🍳 Cocinero: {order.chef.name}</p>
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>Valora el servicio general</p>
+              </div>
+              <span className="text-lg">→</span>
+            </button>
+          ) : null}
+          {order.items.map(item => (
+            <button
+              key={item.dish_id}
+              onClick={() => onSelect({ type: 'dish', id: item.dish_id, name: item.dish_name })}
+              className="w-full text-left p-4 rounded-xl border flex items-center justify-between"
+              style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}
+            >
+              <div>
+                <p className="font-semibold text-green-500">🍲 Plato: {item.dish_name}</p>
+                <p className="text-sm" style={{ color: 'var(--muted)' }}>Valora la comida</p>
+              </div>
+              <span className="text-lg">→</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+  if (typeof document === 'undefined') return modal
+  return createPortal(modal, document.body)
+}
+
+function ReviewFormModal({ target, onClose, onSubmit }) {
+  const [rating, setRating] = useState(5)
+  const [comment, setComment] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = previousOverflow }
+  }, [])
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    try {
+      await onSubmit(Number(rating), comment)
+      alert('¡Gracias por tu calificación!')
+      onClose()
+    } catch (err) {
+      setError(err?.response?.data?.detail || 'No se pudo guardar la reseña.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const modal = (
+    <div
+      className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(15, 23, 42, 0.58)' }}
+      onClick={onClose}
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="flex w-full max-w-md flex-col overflow-hidden rounded-2xl border shadow-xl"
+        style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-3 border-b p-5" style={{ borderColor: 'var(--line)' }}>
+          <h2 className="text-xl font-semibold">
+            Calificar {target.type === 'chef' ? 'al cocinero' : 'plato'}: <span className="text-brand">{target.name}</span>
+          </h2>
+          <button type="button" onClick={onClose} className="h-10 w-10 rounded-lg border" style={{ borderColor: 'var(--line)' }}>
+            x
+          </button>
+        </div>
+        <div className="space-y-4 p-5">
+          {error ? <div className="text-red-500 text-sm bg-red-500/10 p-3 rounded-lg">{error}</div> : null}
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-semibold">Calificación (1 a 5)</label>
+            <select
+              value={rating}
+              onChange={(e) => setRating(e.target.value)}
+              className="border rounded-xl px-3 py-2 w-full outline-none"
+              style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}
+            >
+              <option value="5">5 - Excelente</option>
+              <option value="4">4 - Muy bueno</option>
+              <option value="3">3 - Bueno</option>
+              <option value="2">2 - Regular</option>
+              <option value="1">1 - Malo</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className="text-sm font-semibold">Comentario</label>
+            <textarea
+              required
+              minLength={4}
+              maxLength={600}
+              rows={4}
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Escribe tu reseña visible para la comunidad..."
+              className="border rounded-xl px-3 py-2 w-full outline-none"
+              style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}
+            />
+          </div>
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={saving}
+              className="w-full px-4 py-3 rounded-xl text-white font-semibold disabled:opacity-60 shadow"
+              style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
+            >
+              {saving ? 'Publicando...' : 'Publicar reseña'}
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  )
   if (typeof document === 'undefined') return modal
   return createPortal(modal, document.body)
 }

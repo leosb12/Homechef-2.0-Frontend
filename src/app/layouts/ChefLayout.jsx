@@ -51,14 +51,57 @@ const sidebarFooter = (
   </div>
 )
 
+import { useEffect, useState } from 'react'
+import { Navigate, useLocation } from 'react-router-dom'
+import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
+import { api } from '../../shared/services/api'
+
 export default function ChefLayout() {
+  const user = useAuthSession((state) => state.user)
+  const setSession = useAuthSession((state) => state.setSession)
+  const role = useAuthSession((state) => state.role)
+  const accessToken = useAuthSession((state) => state.accessToken)
+  const location = useLocation()
+  const [isInitializing, setIsInitializing] = useState(true)
+
+  useEffect(() => {
+    if (role === 'COCINERO' && accessToken && !user?.chef_profile) {
+      api.get('/auth/session/')
+        .then(res => {
+          if (res.data?.user) {
+            setSession({ access: accessToken, role, user: res.data.user })
+          }
+        })
+        .catch(console.error)
+        .finally(() => setIsInitializing(false))
+    } else {
+      setIsInitializing(false)
+    }
+  }, [role, accessToken, user, setSession])
+  
+  const status = user?.chef_profile?.status
+
+  if (isInitializing) {
+    return <div className="min-h-screen flex items-center justify-center">Cargando perfil...</div>
+  }
+  
+  if (status === 'pending_validation' && location.pathname !== '/chef/pending') {
+    return <Navigate to="/chef/pending" replace />
+  }
+  if (status === 'rejected' && location.pathname !== '/chef/rejected') {
+    return <Navigate to="/chef/rejected" replace />
+  }
+  if (status === 'approved' && (location.pathname === '/chef/pending' || location.pathname === '/chef/rejected')) {
+    return <Navigate to="/chef/dashboard" replace />
+  }
+
   return (
     <RoleLayout
       title="Cocinero"
       brandTitle="ChefConsole"
       brandGlyph="CH"
-      links={links}
-      sidebarFooter={sidebarFooter}
+      links={status === 'approved' ? links : []}
+      sidebarFooter={status === 'approved' ? sidebarFooter : null}
       collapseLabel="Contraer menu"
     />
   )

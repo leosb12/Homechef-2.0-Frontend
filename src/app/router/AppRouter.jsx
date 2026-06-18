@@ -25,6 +25,8 @@ import OrderTrackingPage from '../../modules/pedidos_checkout_pagos/pages/OrderT
 import ClientQrSimulatedPaymentPage from '../../modules/pedidos_checkout_pagos/pages/ClientQrSimulatedPaymentPage'
 import ChefOrdersPage from '../../modules/pedidos_checkout_pagos/pages/ChefOrdersPage'
 import ChefOrderDetailPage from '../../modules/pedidos_checkout_pagos/pages/ChefOrderDetailPage'
+import ChefPendingPage from '../../modules/gestion_cocinero/pages/ChefPendingPage'
+import ChefRejectedPage from '../../modules/gestion_cocinero/pages/ChefRejectedPage'
 import ChefDashboardPage from '../../modules/gestion_cocinero/pages/ChefDashboardPage'
 import ChefFinancesPage from '../../modules/gestion_cocinero/pages/ChefFinancesPage'
 import ChefDishesPage from '../../modules/gestion_cocinero/pages/ChefDishesPage'
@@ -38,6 +40,10 @@ import ChefIAFunctionPage from '../../modules/funciones_ia/pages/ChefIAFunctionP
 import NotificationCenterPage from '../../modules/confianza_administracion_seguridad/pages/NotificationCenterPage'
 import AdminDeliveryDriversPage from '../../modules/confianza_administracion_seguridad/pages/AdminDeliveryDriversPage'
 import AdminActiveDeliveryOrdersPage from '../../modules/confianza_administracion_seguridad/pages/AdminActiveDeliveryOrdersPage'
+import AdminUsersPage from '../../modules/confianza_administracion_seguridad/pages/AdminUsersPage'
+import AdminChefsValidationPage from '../../modules/confianza_administracion_seguridad/pages/AdminChefsValidationPage'
+import AdminPublicationsPage from '../../modules/confianza_administracion_seguridad/pages/AdminPublicationsPage'
+import AdminDashboardPage from '../../modules/confianza_administracion_seguridad/pages/AdminDashboardPage'
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 
 function Page({ title }) { return <div><h2 className="text-xl font-semibold">{title}</h2></div> }
@@ -76,6 +82,9 @@ export default function AppRouter() {
         <Route path="profile" element={<ProfilePage />} />
       </Route>
 
+      <Route path="/chef/pending" element={<ChefPendingPage />} />
+      <Route path="/chef/rejected" element={<ChefRejectedPage />} />
+
       <Route path="/chef" element={<ChefLayout />}>
         <Route path="dashboard" element={<ChefDashboardPage />} />
         <Route path="finances" element={<ChefFinancesPage />} />
@@ -97,12 +106,12 @@ export default function AppRouter() {
       </Route>
 
       <Route path="/admin" element={<AdminLayout />}>
-        <Route path="dashboard" element={<Page title="Dashboard admin" />} />
-        <Route path="users" element={<Page title="Usuarios" />} />
+        <Route path="dashboard" element={<AdminDashboardPage />} />
+        <Route path="users" element={<AdminUsersPage />} />
         <Route path="delivery-drivers" element={<AdminDeliveryDriversPage />} />
         <Route path="delivery-orders" element={<AdminActiveDeliveryOrdersPage />} />
-        <Route path="chefs" element={<Page title="Cocineros" />} />
-        <Route path="publications" element={<Page title="Publicaciones" />} />
+        <Route path="chefs" element={<AdminChefsValidationPage />} />
+        <Route path="publications" element={<AdminPublicationsPage />} />
         <Route path="fraud" element={<Page title="Fraude y riesgo" />} />
         <Route path="reports" element={<Page title="Reportes" />} />
         <Route path="settings" element={<Page title="Configuracion" />} />
