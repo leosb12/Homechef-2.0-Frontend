@@ -1,4 +1,6 @@
-export const IA_FUNCTIONS = [
+import { IAFunctionMetadata } from '../types/funcionesIa.types';
+
+export const IA_FUNCTIONS: IAFunctionMetadata[] = [
   {
     code: 'asistente_ia',
     title: 'Asistente IA',
@@ -10,7 +12,7 @@ export const IA_FUNCTIONS = [
   {
     code: 'vision_artificial',
     title: 'Visión artificial',
-    description: 'Análisis visual de platos e imágenes para publicaciones futuras.',
+    description: 'Reconoce los ingredientes de tu despensa mediante una foto para sugerir platos automáticamente.',
     path: '/chef/ai/vision',
     accent: '#f59e0b',
     shortLabel: 'VI',
@@ -31,9 +33,9 @@ export const IA_FUNCTIONS = [
     accent: '#ec4899',
     shortLabel: 'PB',
   },
-]
+];
 
-export const IA_FUNCTION_BY_CODE = IA_FUNCTIONS.reduce((acc, item) => {
-  acc[item.code] = item
-  return acc
-}, {})
+export const IA_FUNCTION_BY_CODE = IA_FUNCTIONS.reduce<Record<string, IAFunctionMetadata>>((acc, item) => {
+  acc[item.code] = item;
+  return acc;
+}, {});

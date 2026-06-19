@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { uploadFile } from "../../../shared/services/uploads";
 import {
   createChefDish,
@@ -70,6 +71,7 @@ export default function ChefDishesPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [loadingAction, setLoadingAction] = useState("");
   const fileInputRef = useRef(null);
+  const location = useLocation();
 
   const load = async () => {
     try {
@@ -95,6 +97,24 @@ export default function ChefDishesPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (location.state?.suggestedDish) {
+      const suggested = location.state.suggestedDish;
+      setForm((prev) => ({
+        ...prev,
+        name: suggested.name || "",
+        description: suggested.description || "",
+        price: String(suggested.price ?? ""),
+        portions: String(suggested.portions ?? ""),
+        ingredients: Array.isArray(suggested.ingredients) ? suggested.ingredients : [],
+        tags: Array.isArray(suggested.tags) ? suggested.tags : [],
+        schedule: suggested.schedule || "",
+      }));
+      // Clear navigation state
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const filteredItems = useMemo(() => {
     const q = search.trim().toLowerCase();
