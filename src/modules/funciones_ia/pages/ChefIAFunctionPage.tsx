@@ -4,6 +4,7 @@ import IAAccessNotice from '../components/IAAccessNotice';
 import { IA_FUNCTIONS } from '../constants/iaFunctions';
 import { usarFuncionIA } from '../services/funcionesIaAccess.service';
 import type { UsarFuncionIAResponse } from '../types/funcionesIa.types';
+import { canBypassIAAccessForOfflineDev } from '../shared/offline/offline_utils';
 
 // Import submodules pages
 import AsistenteIaPage from '../submodules/asistente_ia/pages/AsistenteIaPage';
@@ -67,6 +68,15 @@ export default function ChefIAFunctionPage() {
         setStatus('blocked');
       } catch {
         if (!ignore) {
+          if (canBypassIAAccessForOfflineDev(functionCode)) {
+            setAccessResponse({
+              permitido: true,
+              codigo: 'ACCESO_AUTORIZADO',
+              mensaje: 'Modo desarrollo/local: backend no disponible, se habilita solo el motor offline del navegador.',
+            });
+            setStatus('authorized');
+            return;
+          }
           setError('No se pudo validar el acceso a la función IA.');
           setStatus('blocked');
         }

@@ -34,6 +34,7 @@ export interface InterpretedRequest {
   detected_time_minutes?: number;
   detected_dietary_restrictions: string[];
   user_intent: string;
+  userIntent?: string;
 }
 
 export interface RecipeSuggestResponse {
@@ -43,6 +44,9 @@ export interface RecipeSuggestResponse {
   model: string;
   fallback_used: boolean;
   fallback_reason?: string;
+  source?: 'online' | 'local';
+  offline_ready?: boolean;
+  mode?: 'online' | 'fallback' | 'offline';
   interpreted_request: InterpretedRequest;
   suggestions: RecipeSuggestionItem[];
 }

@@ -17,8 +17,15 @@ export interface PublicationAssistRequest {
 export interface GeneratedPublication {
   title: string;
   description: string;
+  short_description?: string;
+  long_description?: string;
   tags: string[];
   categories: string[];
+  allergens?: string[];
+  keywords?: string[];
+  improvements?: string[];
+  ingredients?: PublicationIngredient[];
+  schedule?: string;
   suggested_price: {
     amount: number;
     currency: string;
@@ -36,4 +43,7 @@ export interface PublicationAssistResponse {
     fields_estimated: string[];
   };
   generated_publication: GeneratedPublication;
+  source?: 'online' | 'local';
+  offline_ready?: boolean;
+  mode?: 'online' | 'fallback' | 'offline';
 }

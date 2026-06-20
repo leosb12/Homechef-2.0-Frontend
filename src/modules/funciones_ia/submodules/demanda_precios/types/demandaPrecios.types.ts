@@ -61,10 +61,20 @@ export interface ProductionPricingResponse {
   cost_per_plate_bs: number;
   total_preparation_cost_bs: number;
   suggested_sale_price_bs: number;
+  price_min_bs?: number;
+  price_max_bs?: number;
+  ingredient_total_cost_bs?: number;
+  operational_cost_per_plate_bs?: number;
+  profit_per_plate_bs?: number;
+  margin_percent?: number;
+  margin_estimated?: number;
   leftover_risk: string;
   discount_recommended: boolean;
   suggested_discount_price_bs: number;
   explanations: Record<string, string>;
+  source?: 'online' | 'local';
+  offline_ready?: boolean;
+  mode?: 'online' | 'fallback' | 'offline';
 }
 
 export interface PreviewImputationResponse {
@@ -73,4 +83,7 @@ export interface PreviewImputationResponse {
   imputed_data: ImputationDetail[];
   data_quality: string;
   warnings: string[];
+  source?: 'online' | 'local';
+  offline_ready?: boolean;
+  mode?: 'online' | 'fallback' | 'offline';
 }

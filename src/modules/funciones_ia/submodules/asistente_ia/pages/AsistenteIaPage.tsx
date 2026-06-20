@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom';
 import { useAuthSession } from '../../../../gestion_usuarios_acceso_suscripcion/services/auth_session';
 import { suggestRecipes } from '../services/asistenteIa.service';
 import type { RecipeSuggestResponse, RecipeSuggestionItem } from '../types/asistenteIa.types';
+import OfflineResultNotice from '../../../components/OfflineResultNotice';
 
 const PREDEFINED_INGREDIENTS = [
   'Pollo', 'Carne molida', 'Arroz', 'Papa', 'Huevo', 'Queso', 'Tomate',
@@ -86,6 +87,14 @@ export default function AsistenteIaPage() {
     setResult(null);
     setError('');
     setExpandedSection({});
+  };
+
+  const handleCopyResult = () => {
+    if (!result) return;
+    const text = result.suggestions
+      .map((suggestion) => `${suggestion.dish_name}\n${suggestion.description}\nIngredientes: ${suggestion.ingredients_used.join(', ')}\nPasos: ${suggestion.preparation_steps.join(' ')}`)
+      .join('\n\n');
+    navigator.clipboard?.writeText(text);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -228,7 +237,9 @@ export default function AsistenteIaPage() {
       {/* Results View */}
       {!isLoading && result && (
         <div className="space-y-6">
-          {result.fallback_used && (
+          <OfflineResultNotice visible={result.source === 'local' || result.offline_ready === true} detail={result.fallback_reason} />
+
+          {result.fallback_used && result.source !== 'local' && (
             <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/40 text-amber-300 text-xs flex items-center gap-2">
               ⚠️ Respuesta generada con proveedor alternativo de respaldo.
             </div>
@@ -241,7 +252,7 @@ export default function AsistenteIaPage() {
               <p className="text-sm italic" style={{ color: 'var(--muted)' }}>« {result.interpreted_request.raw_prompt} »</p>
             )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-              <p><span className="font-semibold text-white">Intención:</span> {result.interpreted_request.userIntent}</p>
+              <p><span className="font-semibold text-white">Intención:</span> {result.interpreted_request.userIntent || result.interpreted_request.user_intent}</p>
               {result.interpreted_request.detected_ingredients.length > 0 && (
                 <p>
                   <span className="font-semibold text-white">Ingredientes detectados:</span>{' '}
@@ -425,6 +436,14 @@ export default function AsistenteIaPage() {
           )}
 
           <div className="flex justify-end pt-4">
+            <button
+              type="button"
+              onClick={handleCopyResult}
+              className="px-6 py-2.5 rounded-lg border font-semibold hover:bg-[var(--panel-soft)] transition duration-200 mr-3"
+              style={{ borderColor: 'var(--line)' }}
+            >
+              Copiar recomendaciones
+            </button>
             <button
               type="button"
               onClick={handleReset}
