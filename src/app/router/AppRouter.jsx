@@ -38,6 +38,7 @@ import AISubscriptionPage from '../../modules/gestion_usuarios_acceso_suscripcio
 import ChefIAHubPage from '../../modules/funciones_ia/pages/FuncionesIaPage'
 import ChefIAFunctionPage from '../../modules/funciones_ia/pages/ChefIAFunctionPage'
 import NotificationCenterPage from '../../modules/confianza_administracion_seguridad/pages/NotificationCenterPage'
+import DynamicReportsPage from '../../modules/confianza_administracion_seguridad/pages/DynamicReportsPage'
 import AdminDeliveryDriversPage from '../../modules/confianza_administracion_seguridad/pages/AdminDeliveryDriversPage'
 import AdminActiveDeliveryOrdersPage from '../../modules/confianza_administracion_seguridad/pages/AdminActiveDeliveryOrdersPage'
 import AdminUsersPage from '../../modules/confianza_administracion_seguridad/pages/AdminUsersPage'
@@ -114,7 +115,7 @@ export default function AppRouter() {
         <Route path="chefs" element={<AdminChefsValidationPage />} />
         <Route path="publications" element={<AdminPublicationsPage />} />
         <Route path="fraud" element={<AdminFraudRiskPage />} />
-        <Route path="reports" element={<Page title="Reportes" />} />
+        <Route path="reports" element={<DynamicReportsPage />} />
         <Route path="settings" element={<Page title="Configuracion" />} />
       </Route>
 
