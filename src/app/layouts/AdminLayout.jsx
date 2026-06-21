@@ -9,7 +9,6 @@ const links = [
   { to: '/admin/publications', label: 'Publicaciones', icon: <SidebarIcon type="publications" /> },
   { to: '/admin/fraud', label: 'Fraude y riesgo', icon: <SidebarIcon type="shield" /> },
   { to: '/admin/reports', label: 'Reportes', icon: <SidebarIcon type="reports" /> },
-  { to: '/admin/settings', label: 'Configuracion', icon: <SidebarIcon type="settings" /> },
 ]
 
 const sidebarFooter = (

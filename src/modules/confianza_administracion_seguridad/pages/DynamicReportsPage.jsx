@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReportChat from '../components/DynamicReports/ReportChat';
 import ReportResults from '../components/DynamicReports/ReportResults';
 
@@ -11,8 +11,15 @@ export default function DynamicReportsPage() {
     const [chartData, setChartData] = useState(null);
     const [rawData, setRawData] = useState(null);
     const [currentPrompt, setCurrentPrompt] = useState('');
+    const [offlinePendingPrompt, setOfflinePendingPrompt] = useState(null);
 
     const handleChatSubmit = async (prompt) => {
+        if (!navigator.onLine) {
+            setOfflinePendingPrompt(prompt);
+            setClarificationMessage("No tienes conexión a internet. Tu petición está en cola y se enviará automáticamente en cuanto vuelvas a estar en línea.");
+            return;
+        }
+        
         setIsLoading(true);
         setClarificationMessage('');
         setCurrentPrompt(prompt);
@@ -28,7 +35,14 @@ export default function DynamicReportsPage() {
                 body: JSON.stringify({ prompt })
             });
 
-            const data = await response.json();
+            const contentType = response.headers.get("content-type");
+            let data = {};
+            if (contentType && contentType.includes("application/json")) {
+                data = await response.json();
+            } else {
+                const textError = await response.text();
+                throw new Error('Error interno del servidor (respuesta no-JSON)');
+            }
 
             if (!response.ok) {
                 throw new Error(data.error || 'Error procesando solicitud');
@@ -51,6 +65,19 @@ export default function DynamicReportsPage() {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        const handleOnline = () => {
+            if (offlinePendingPrompt) {
+                const promptToRun = offlinePendingPrompt;
+                setOfflinePendingPrompt(null);
+                setClarificationMessage("¡Conexión restaurada! Procesando tu reporte en cola...");
+                handleChatSubmit(promptToRun);
+            }
+        };
+        window.addEventListener('online', handleOnline);
+        return () => window.removeEventListener('online', handleOnline);
+    }, [offlinePendingPrompt]);
 
     const handleReset = () => {
         setView('chat');
