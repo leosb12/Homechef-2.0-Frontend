@@ -5,6 +5,7 @@ import IAAccessNotice from '../components/IAAccessNotice';
 import { IA_FUNCTIONS } from '../constants/iaFunctions';
 import { usarFuncionIA } from '../services/funcionesIaAccess.service';
 import type { UsarFuncionIAResponse, IAFunctionMetadata } from '../types/funcionesIa.types';
+import { canBypassIAAccessForOfflineDev } from '../shared/offline/offline_utils';
 
 export default function FuncionesIaPage() {
   const navigate = useNavigate();
@@ -24,6 +25,10 @@ export default function FuncionesIaPage() {
       }
       setAccessResponse(response);
     } catch {
+      if (canBypassIAAccessForOfflineDev(iaFunction.code)) {
+        navigate(iaFunction.path, { state: { authorized: true, functionCode: iaFunction.code, offlineDevAccess: true } });
+        return;
+      }
       setError('No se pudo validar el acceso a la función IA.');
     } finally {
       setLoadingCode('');

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuthSession } from '../../../../gestion_usuarios_acceso_suscripcion/services/auth_session';
 import { assistPublication } from '../services/publicacionPlatos.service';
 import type { PublicationAssistResponse, PublicationIngredient } from '../types/publicacionPlatos.types';
+import OfflineResultNotice from '../../../components/OfflineResultNotice';
 
 const UNITS = ['unidad', 'gramo', 'kilo', 'litro', 'ml', 'taza', 'cucharada', 'porción'];
 
@@ -378,6 +379,8 @@ export default function PublicacionPlatosPage() {
       {/* AI Suggestion Output */}
       {!isLoading && response && (
         <div className="space-y-6">
+          <OfflineResultNotice visible={response.source === 'local' || response.offline_ready === true} />
+
           <div className="flex flex-wrap items-center justify-between gap-3 bg-[var(--panel)] border p-4 rounded-xl" style={{ borderColor: 'var(--line)' }}>
             <div>
               <h3 className="font-bold text-white">Sugerencia de la IA lista</h3>
@@ -475,6 +478,25 @@ export default function PublicacionPlatosPage() {
               <p className="text-xs italic" style={{ color: 'var(--muted)' }}>
                 {response.generated_publication.suggested_price.calculation_summary}
               </p>
+
+              {(response.generated_publication.allergens?.length || response.generated_publication.keywords?.length || response.generated_publication.improvements?.length) ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                  <div className="rounded-lg border p-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+                    <p className="font-semibold text-white mb-1">Alergenos posibles</p>
+                    <p style={{ color: 'var(--muted)' }}>{response.generated_publication.allergens?.join(', ') || 'Sin alergenos detectados'}</p>
+                  </div>
+                  <div className="rounded-lg border p-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+                    <p className="font-semibold text-white mb-1">Palabras clave</p>
+                    <p style={{ color: 'var(--muted)' }}>{response.generated_publication.keywords?.slice(0, 8).join(', ') || 'Sin keywords adicionales'}</p>
+                  </div>
+                  <div className="rounded-lg border p-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+                    <p className="font-semibold text-white mb-1">Mejoras recomendadas</p>
+                    <ul className="list-disc pl-4" style={{ color: 'var(--muted)' }}>
+                      {(response.generated_publication.improvements || []).slice(0, 3).map((item, i) => <li key={i}>{item}</li>)}
+                    </ul>
+                  </div>
+                </div>
+              ) : null}
 
               {/* Ingredientes sugeridos */}
               <div className="space-y-2 pt-2">

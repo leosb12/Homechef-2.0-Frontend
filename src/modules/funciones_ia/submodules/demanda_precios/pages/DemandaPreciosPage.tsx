@@ -3,6 +3,7 @@ import { useAuthSession } from '../../../../gestion_usuarios_acceso_suscripcion/
 import { getPricingRecommendation, getPreviewImputation } from '../services/demandaPrecios.service';
 import type { ProductionPricingResponse, PreviewImputationResponse, IngredientPriceInput } from '../types/demandaPrecios.types';
 import { fetchChefDishes } from '../../../../gestion_cocinero/services/chef_service';
+import OfflineResultNotice from '../../../components/OfflineResultNotice';
 
 const CITIES = [
   'Santa Cruz', 'Cochabamba', 'La Paz', 'Sucre', 'Tarija', 
@@ -248,6 +249,19 @@ export default function DemandaPreciosPage() {
     setSelectedDishId('');
   };
 
+  const handleCopyRecommendation = () => {
+    if (!recommendation) return;
+    navigator.clipboard?.writeText(
+      `${recommendation.dish_name}\nDemanda: ${recommendation.estimated_demand}\nPrecio sugerido: Bs ${formatBs(recommendation.suggested_price_bs)}\nCosto por plato: Bs ${formatBs(recommendation.cost_per_plate_bs)}\nGanancia por plato: Bs ${formatBs(recommendation.profit_per_plate_bs || 0)}\nCantidad: ${recommendation.recommended_plates} platos\n${recommendation.explanation}`,
+    );
+  };
+
+  const formatBs = (value: number | string | undefined | null) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) return '0.00';
+    return numeric.toFixed(2);
+  };
+
   return (
     <section className="space-y-6 max-w-5xl animate-in fade-in duration-300">
       <div className="space-y-2">
@@ -457,7 +471,7 @@ export default function DemandaPreciosPage() {
                   <div className="flex flex-wrap gap-2">
                     {ingredients.map((ing) => {
                       const costDetail = knownPrices.find((x) => x.ingredient === ing);
-                      const costLabel = costDetail ? ` (${costDetail.price_bs} Bs)` : '';
+                      const costLabel = costDetail ? ` (${formatBs(costDetail.price_bs)} Bs)` : '';
                       return (
                         <span
                           key={ing}
@@ -658,6 +672,7 @@ export default function DemandaPreciosPage() {
             {/* Preview Imputed list if available */}
             {preview && (
               <div className="rounded-xl border p-5 space-y-3 animate-in fade-in" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+                <OfflineResultNotice visible={preview.source === 'local' || preview.offline_ready === true} />
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-[var(--brand-2)] uppercase">Imputaciones sugeridas</h4>
                   <span className="text-[10px] px-1.5 py-0.5 rounded font-bold bg-green-500/10 text-green-300">
@@ -695,6 +710,8 @@ export default function DemandaPreciosPage() {
       {/* Recommendations Output */}
       {!isLoading && recommendation && (
         <div className="space-y-6">
+          <OfflineResultNotice visible={recommendation.source === 'local' || recommendation.offline_ready === true} />
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {/* 1. Demand Score */}
             <div className="rounded-xl border p-5 space-y-2" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
@@ -721,15 +738,23 @@ export default function DemandaPreciosPage() {
             {/* 3. Suggested Price */}
             <div className="rounded-xl border p-5 space-y-1" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
               <p className="text-xs" style={{ color: 'var(--muted)' }}>Precio sugerido</p>
-              <h3 className="text-2xl font-bold text-green-400">{recommendation.suggested_price_bs} Bs</h3>
-              <p className="text-[10px]" style={{ color: 'var(--muted)' }}>Costo por plato: {recommendation.cost_per_plate_bs} Bs</p>
+              <h3 className="text-2xl font-bold text-green-400">{formatBs(recommendation.suggested_price_bs)} Bs</h3>
+              <p className="text-[10px]" style={{ color: 'var(--muted)' }}>Costo por plato: {formatBs(recommendation.cost_per_plate_bs)} Bs</p>
+              {recommendation.operational_cost_per_plate_bs !== undefined ? (
+                <p className="text-[10px]" style={{ color: 'var(--muted)' }}>Operativo: {formatBs(recommendation.operational_cost_per_plate_bs)} Bs</p>
+              ) : null}
+              {recommendation.price_min_bs && recommendation.price_max_bs ? (
+                <p className="text-[10px]" style={{ color: 'var(--muted)' }}>Rango: Bs {formatBs(recommendation.price_min_bs)} - {formatBs(recommendation.price_max_bs)}</p>
+              ) : null}
             </div>
 
             {/* 4. Estimated Profit */}
             <div className="rounded-xl border p-5 space-y-1" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
               <p className="text-xs" style={{ color: 'var(--muted)' }}>Margen de ganancia neto</p>
-              <h3 className="text-2xl font-bold text-white">{recommendation.estimated_profit_bs.toFixed(1)} Bs</h3>
-              <p className="text-[10px]" style={{ color: 'var(--muted)' }}>Ingreso total proyectado: {recommendation.estimated_revenue_bs} Bs</p>
+              <h3 className="text-2xl font-bold text-white">{formatBs(recommendation.estimated_profit_bs)} Bs</h3>
+              <p className="text-[10px]" style={{ color: 'var(--muted)' }}>Ganancia por plato: {formatBs(recommendation.profit_per_plate_bs)} Bs</p>
+              <p className="text-[10px]" style={{ color: 'var(--muted)' }}>Margen: {formatBs(recommendation.margin_percent ?? recommendation.margin_estimated)}%</p>
+              <p className="text-[10px]" style={{ color: 'var(--muted)' }}>Ingreso total proyectado: {formatBs(recommendation.estimated_revenue_bs)} Bs</p>
             </div>
           </div>
 
@@ -738,7 +763,7 @@ export default function DemandaPreciosPage() {
             <div className="p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 space-y-1">
               <h4 className="text-sm font-bold text-amber-300">💡 Descuento dinámico recomendado</h4>
               <p className="text-xs text-white">
-                Se aconseja aplicar un descuento del <strong>{recommendation.dynamic_discount_percent}%</strong> (Precio oferta: <strong>{recommendation.suggested_discount_price_bs} Bs</strong>) si el stock se mantiene alto pasado el horario pico de venta o si el riesgo de vencimiento aumenta ({recommendation.leftover_risk}).
+                Se aconseja aplicar un descuento del <strong>{recommendation.dynamic_discount_percent}%</strong> (Precio oferta: <strong>{formatBs(recommendation.suggested_discount_price_bs)} Bs</strong>) si el stock se mantiene alto pasado el horario pico de venta o si el riesgo de vencimiento aumenta ({recommendation.leftover_risk}).
               </p>
             </div>
           )}
@@ -791,12 +816,24 @@ export default function DemandaPreciosPage() {
                     {recommendation.ingredient_price_breakdown.map((item, i) => (
                       <div key={i} className="flex justify-between border-b pb-1" style={{ borderColor: 'var(--line)' }}>
                         <span className="capitalize">{item.ingredient}</span>
-                        <span className="font-semibold text-white">{item.cost_bs} Bs</span>
+                        <span className="font-semibold text-white">{formatBs(item.cost_bs)} Bs</span>
                       </div>
                     ))}
+                    {recommendation.operational_cost_per_plate_bs !== undefined && (
+                      <div className="flex justify-between border-b pb-1" style={{ borderColor: 'var(--line)' }}>
+                        <span>Costo operativo por porcion:</span>
+                        <span className="font-semibold text-white">{formatBs(recommendation.operational_cost_per_plate_bs)} Bs</span>
+                      </div>
+                    )}
+                    {recommendation.profit_per_plate_bs !== undefined && (
+                      <div className="flex justify-between border-b pb-1" style={{ borderColor: 'var(--line)' }}>
+                        <span>Ganancia estimada por porcion:</span>
+                        <span className="font-semibold text-white">{formatBs(recommendation.profit_per_plate_bs)} Bs</span>
+                      </div>
+                    )}
                     <div className="flex justify-between pt-1 font-bold text-white">
                       <span>Costo Ingredientes Total:</span>
-                      <span>{recommendation.total_preparation_cost_bs} Bs</span>
+                      <span>{formatBs(recommendation.ingredient_total_cost_bs ?? recommendation.total_preparation_cost_bs)} Bs</span>
                     </div>
                   </div>
                 </div>
@@ -812,6 +849,14 @@ export default function DemandaPreciosPage() {
               style={{ borderColor: 'var(--line)' }}
             >
               ← Calcular nuevo plato
+            </button>
+            <button
+              type="button"
+              onClick={handleCopyRecommendation}
+              className="px-6 py-2.5 rounded-lg border font-semibold hover:bg-[var(--panel-soft)] transition duration-200"
+              style={{ borderColor: 'var(--line)' }}
+            >
+              Copiar calculo
             </button>
           </div>
         </div>
