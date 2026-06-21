@@ -10,6 +10,10 @@ import {
 import LoadingButton from "../components/LoadingButton";
 import SearchableSelect from "../components/SearchableSelect";
 import { ALERGENOS, INGREDIENTES, ETIQUETAS } from "../constants";
+import {
+  clearChatbotPageContext,
+  setChatbotPageContext,
+} from "../../user_manual_chatbot/services/chatbotPageContext";
 
 const STATUS_LABELS = {
   published: "Publicado",
@@ -137,6 +141,21 @@ export default function ChefDishesPage() {
     });
     return base;
   }, [items]);
+
+  useEffect(() => {
+    setChatbotPageContext(
+      "/chef/dishes",
+      {
+        visible_dishes: filteredItems.map(toChatbotDishContext),
+        all_dishes: items.map(toChatbotDishContext),
+        dish_counters: counters,
+        active_filter: activeTab,
+        search_query: search,
+      },
+      "Mis platos",
+    );
+    return () => clearChatbotPageContext("/chef/dishes");
+  }, [activeTab, counters, filteredItems, items, search]);
 
   const setNotice = (text, error = false) => {
     setIsError(error);
@@ -827,6 +846,17 @@ function prettyLabel(value) {
     .replaceAll("_", " ")
     .toLowerCase()
     .replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function toChatbotDishContext(dish) {
+  return {
+    id: dish._id || dish.id || "",
+    name: dish.name || "",
+    price: Number(dish.price || 0),
+    portions: Number(dish.portions || 0),
+    status: STATUS_LABELS[dish.status] || dish.status || "Sin estado",
+    raw_status: dish.status || "",
+  };
 }
 
 function Input({

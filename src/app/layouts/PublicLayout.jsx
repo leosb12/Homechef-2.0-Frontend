@@ -4,6 +4,7 @@ import { logoutUser } from '../../modules/gestion_usuarios_acceso_suscripcion/se
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 import { useThemeSession } from '../../shared/services/theme_session'
 import SyncStatusBadge from '../../shared/components/SyncStatusBadge'
+import ChatbotWidget from '../../modules/user_manual_chatbot/components/ChatbotWidget'
 
 export default function PublicLayout() {
   const location = useLocation()
@@ -88,6 +89,7 @@ export default function PublicLayout() {
       <main className={isAuthScreen ? 'w-full px-0 py-0' : 'mx-auto max-w-6xl px-4 py-6'}>
         <Outlet />
       </main>
+      {!isAuthScreen && <ChatbotWidget />}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { useThemeSession } from '../../shared/services/theme_session'
 import LoadingButton from '../../modules/gestion_cocinero/components/LoadingButton'
 import SyncStatusBadge from '../../shared/components/SyncStatusBadge'
 import OfflineConflictsPanel from '../../shared/components/OfflineConflictsPanel'
+import ChatbotWidget from '../../modules/user_manual_chatbot/components/ChatbotWidget'
 
 export default function RoleLayout({
   title,
@@ -379,6 +380,7 @@ export default function RoleLayout({
           </div>
         </div>
       )}
+      <ChatbotWidget />
     </div>
   )
 }
