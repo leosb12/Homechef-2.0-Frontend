@@ -46,6 +46,7 @@ import AdminChefsValidationPage from '../../modules/confianza_administracion_seg
 import AdminPublicationsPage from '../../modules/confianza_administracion_seguridad/pages/AdminPublicationsPage'
 import AdminDashboardPage from '../../modules/confianza_administracion_seguridad/pages/AdminDashboardPage'
 import AdminFraudRiskPage from '../../modules/confianza_administracion_seguridad/pages/AdminFraudRiskPage'
+import AdminAuditPage from '../../modules/confianza_administracion_seguridad/pages/AdminAuditPage'
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 
 function Page({ title }) { return <div><h2 className="text-xl font-semibold">{title}</h2></div> }
@@ -116,6 +117,7 @@ export default function AppRouter() {
         <Route path="publications" element={<AdminPublicationsPage />} />
         <Route path="fraud" element={<AdminFraudRiskPage />} />
         <Route path="reports" element={<DynamicReportsPage />} />
+        <Route path="audit" element={<AdminAuditPage />} />
         <Route path="settings" element={<Page title="Configuracion" />} />
       </Route>
 
