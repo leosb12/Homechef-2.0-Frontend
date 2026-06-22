@@ -39,6 +39,109 @@ export default function ReportResults({ chartData, rawData, prompt, onReset }) {
   const { charts = [], title, data, kpis, suggested_exports = [] } = chartData;
 
   const handleExport = async (format) => {
+    if (!navigator.onLine || window.__offlineReport) {
+      setIsExporting(true);
+      try {
+        const cleanTitle = title || "Reporte";
+        const safeFilename = `${cleanTitle.toLowerCase().replace(/\s+/g, '_')}_${new Date().getTime()}`;
+
+        if (format === 'json') {
+          const blob = new Blob([JSON.stringify(rawData, null, 2)], { type: 'application/json;charset=utf-8;' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${safeFilename}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        } else if (format === 'excel') {
+          const convertToCSV = (objArray) => {
+            const array = typeof objArray !== 'object' ? JSON.parse(objArray) : objArray;
+            if (array.length === 0) return '';
+            const headers = Object.keys(array[0]);
+            const csvRows = [headers.join(',')];
+            for (const row of array) {
+              const values = headers.map(header => {
+                const val = row[header];
+                const escaped = ('' + (val ?? '')).replace(/"/g, '""');
+                return `"${escaped}"`;
+              });
+              csvRows.push(values.join(','));
+            }
+            return csvRows.join('\r\n');
+          };
+          
+          const csvContent = convertToCSV(rawData);
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${safeFilename}.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        } else if (format === 'word') {
+          if (rawData.length === 0) return;
+          const headers = Object.keys(rawData[0]);
+          let html = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+          <head><title>${cleanTitle}</title><style>
+          table { border-collapse: collapse; width: 100%; }
+          th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+          th { background-color: #f2f2f2; }
+          h1 { font-family: Arial, sans-serif; }
+          </style></head>
+          <body>
+          <h1>${cleanTitle}</h1>
+          <table>
+          <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>
+          ${rawData.map(row => `<tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+          </table>
+          </body></html>`;
+          const blob = new Blob([html], { type: 'application/msword' });
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `${safeFilename}.doc`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(url);
+        } else if (format === 'pdf') {
+          if (rawData.length === 0) return;
+          const headers = Object.keys(rawData[0]);
+          const printWindow = window.open('', '_blank');
+          printWindow.document.write(`<html><head><title>${cleanTitle}</title><style>
+          body { font-family: Arial, sans-serif; padding: 20px; }
+          table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+          th, td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+          th { background-color: #f4f4f4; }
+          h1 { color: #333; }
+          </style></head><body>
+          <h1>${cleanTitle}</h1>
+          <table>
+          <thead><tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr></thead>
+          <tbody>
+          ${rawData.map(row => `<tr>${headers.map(h => `<td>${row[h] ?? ''}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+          </table>
+          <script>window.onload = function() { window.print(); window.close(); }</script>
+          </body></html>`);
+          printWindow.document.close();
+        }
+      } catch (error) {
+        console.error("Local export error:", error);
+        alert("No se pudo exportar el reporte localmente.");
+      } finally {
+        setIsExporting(false);
+      }
+      return;
+    }
+
+
     setIsExporting(true);
     try {
       // Asumiendo que el token de auth está en localStorage o manejado por interceptors

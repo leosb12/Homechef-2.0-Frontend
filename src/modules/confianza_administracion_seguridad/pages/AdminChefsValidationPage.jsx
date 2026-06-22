@@ -1,15 +1,30 @@
 import { useEffect, useState } from 'react'
 import AdminPlatformService from '../services/admin_platform_service'
 import ConfirmModal from '../../../shared/components/ConfirmModal'
+import OfflineBanner from '../components/OfflineBanner'
+import { getPendingMutations } from '../services/adminOfflineRepository'
 
 export default function AdminChefsValidationPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [chefs, setChefs] = useState([])
   const [confirmChef, setConfirmChef] = useState(null)
+  const [pendingOps, setPendingOps] = useState([])
+
+  const loadPendingOps = async () => {
+    try {
+      const queue = await getPendingMutations()
+      setPendingOps(queue || [])
+    } catch (e) {
+      console.warn("Could not load pending mutations:", e)
+    }
+  }
 
   useEffect(() => {
     void loadPendingChefs()
+    void loadPendingOps()
+    window.addEventListener('admin-offline-queue-changed', loadPendingOps)
+    return () => window.removeEventListener('admin-offline-queue-changed', loadPendingOps)
   }, [])
 
   async function loadPendingChefs() {
@@ -38,8 +53,11 @@ export default function AdminChefsValidationPage() {
     }
   }
 
+  const activeChefs = chefs.filter(c => c.status !== 'approved' && c.status !== 'rejected' && !c.deleted_at);
+
   return (
     <section className="space-y-6">
+      <OfflineBanner moduleName="chefs" />
       <div>
         <h1 className="text-4xl font-extrabold tracking-tight">Validación de Cocineros</h1>
         <p className="mt-2 text-[15px]" style={{ color: 'var(--muted)' }}>
@@ -52,10 +70,10 @@ export default function AdminChefsValidationPage() {
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {loading ? (
           <p className="text-sm" style={{ color: 'var(--muted)' }}>Cargando solicitudes...</p>
-        ) : chefs.length === 0 ? (
+        ) : activeChefs.length === 0 ? (
           <p className="text-sm" style={{ color: 'var(--muted)' }}>No hay solicitudes de cocineros pendientes.</p>
         ) : (
-          chefs.map((c) => (
+          activeChefs.map((c) => (
             <article key={c.id} className="rounded-[24px] border p-6 flex flex-col gap-4" style={{ borderColor: 'rgba(148, 163, 184, 0.18)', backgroundColor: 'var(--panel)', boxShadow: '0 18px 40px rgba(15, 23, 42, 0.06)' }}>
               <div className="flex items-center gap-4">
                 <div className="h-16 w-16 overflow-hidden rounded-full bg-gray-100 flex-shrink-0">
@@ -66,7 +84,14 @@ export default function AdminChefsValidationPage() {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold">{c.business_name}</h3>
+                  <h3 className="text-lg font-bold flex items-center gap-2">
+                    {c.business_name}
+                    {pendingOps.some(op => op.entity === 'chefs' && String(op.server_id) === String(c.id) && op.status === 'pending') && (
+                      <span className="px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-700 rounded border border-amber-500/30 animate-pulse">
+                        Pendiente
+                      </span>
+                    )}
+                  </h3>
                   <p className="text-sm text-gray-500">{c.first_name} {c.last_name}</p>
                 </div>
               </div>

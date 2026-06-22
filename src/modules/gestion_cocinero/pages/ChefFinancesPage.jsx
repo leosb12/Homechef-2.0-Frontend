@@ -1,9 +1,12 @@
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { fetchChefFinancesSummary } from '../services/chef_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import ChefOfflineBanner from '../components/ChefOfflineBanner'
 
 export default function ChefFinancesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const { isOnline } = useConnectivity()
   const [finances, setFinances] = useState(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
@@ -17,11 +20,15 @@ export default function ChefFinancesPage() {
     fetchChefFinancesSummary(startDate, endDate)
       .then(setFinances)
       .catch((err) => {
-        const errMsg = err?.response?.data?.detail || err.message || 'Error desconocido al cargar las finanzas'
-        setError(`No se pudieron cargar los ingresos: ${errMsg}`)
+        if (!isOnline) {
+          setError('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+        } else {
+          const errMsg = err?.response?.data?.detail || err.message || 'Error desconocido al cargar las finanzas'
+          setError(`No se pudieron cargar los ingresos: ${errMsg}`)
+        }
       })
       .finally(() => setLoading(false))
-  }, [startDate, endDate])
+  }, [startDate, endDate, isOnline])
 
   const handleFilter = (e) => {
     e.preventDefault()
@@ -37,6 +44,7 @@ export default function ChefFinancesPage() {
 
   return (
     <section className="space-y-6">
+      <ChefOfflineBanner />
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Mis Ingresos</h1>
       </div>

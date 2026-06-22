@@ -9,6 +9,7 @@ const links = [
   { to: '/admin/publications', label: 'Publicaciones', icon: <SidebarIcon type="publications" /> },
   { to: '/admin/fraud', label: 'Fraude y riesgo', icon: <SidebarIcon type="shield" /> },
   { to: '/admin/reports', label: 'Reportes', icon: <SidebarIcon type="reports" /> },
+  { to: '/admin/audit', label: 'Auditor\u00eda', icon: <SidebarIcon type="audit" /> },
 ]
 
 const sidebarFooter = (
@@ -139,6 +140,14 @@ function SidebarIcon({ type, stroke = 'currentColor' }) {
           <path d="M6 4h9l3 3v13H6z" />
           <path d="M15 4v4h4" />
           <path d="M9 13h6M9 17h4M9 9h2" />
+        </svg>
+      )
+    case 'audit':
+      return (
+        <svg {...common}>
+          <path d="M5 4h14v16H5z" />
+          <path d="M8 8h8M8 12h5M8 16h4" />
+          <path d="m15 15 1.2 1.2L19 13.4" />
         </svg>
       )
     case 'settings':

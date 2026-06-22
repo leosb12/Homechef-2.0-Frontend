@@ -6,6 +6,7 @@ import {
   removeFavorite,
   savePreferences,
 } from '../services/public_dashboard_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
 
 const CUISINE_OPTIONS = [
   'tradicional',
@@ -47,6 +48,7 @@ const LABELS = {
 
 export default function FavoritesPage() {
   const navigate = useNavigate()
+  const { isOnline } = useConnectivity()
   const [loading, setLoading] = useState(true)
   const [items, setItems] = useState([])
   const [prefs, setPrefs] = useState({ cuisine_types: [], diet_types: [], price_range: {} })
@@ -58,18 +60,26 @@ export default function FavoritesPage() {
     setError('')
     try {
       const [fav, pr] = await Promise.all([fetchFavorites(), fetchPreferences()])
-      setItems(fav.items || [])
+      const itemsList = fav.items || []
+      setItems(itemsList)
       setPrefs({
         cuisine_types: pr?.cuisine_types || [],
         diet_types: pr?.diet_types || [],
         price_range: pr?.price_range || {},
       })
+      if (!isOnline && itemsList.length === 0) {
+        setError('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      }
     } catch (err) {
       if (err?.response?.status === 401 || err?.response?.status === 403) {
         navigate('/login')
         return
       }
-      setError('No se pudo cargar favoritos y preferencias.')
+      if (!isOnline) {
+        setError('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setError('No se pudo cargar favoritos y preferencias.')
+      }
     } finally {
       setLoading(false)
     }
@@ -77,7 +87,7 @@ export default function FavoritesPage() {
 
   useEffect(() => {
     load()
-  }, [])
+  }, [isOnline])
 
   useEffect(() => {
     if (!message) return
@@ -257,6 +267,7 @@ function FavoriteCard({ item, onRemove, onOpen }) {
   const target = item.target || {}
   const isDish = item.favorite_type === 'dish'
   const image = target.image_url || target.profile_image_url
+  const isPending = item.synced === false || String(item._id || item.id).startsWith('favorite-temp-')
 
   return (
     <div className="rounded-2xl border p-3 md:p-4 flex flex-col gap-3 sm:flex-row sm:items-center" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
@@ -269,6 +280,11 @@ function FavoriteCard({ item, onRemove, onOpen }) {
           <span className="text-sm px-2 py-1 rounded-full" style={{ backgroundColor: 'var(--panel-soft)', color: 'var(--brand-2)' }}>
             {isDish ? 'Plato' : 'Cocinero'}
           </span>
+          {isPending && (
+            <span className="text-xs px-2 py-1 rounded-full font-semibold animate-pulse" style={{ backgroundColor: 'rgba(245,158,11,.15)', color: '#d97706' }}>
+              Pendiente de sincronizar
+            </span>
+          )}
         </div>
         {isDish ? (
           <p className="text-sm" style={{ color: 'var(--muted)' }}>

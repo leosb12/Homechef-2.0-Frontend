@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchChefAvailability, saveChefAvailability } from '../services/chef_service'
 import LoadingButton from '../components/LoadingButton'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import ChefOfflineBanner from '../components/ChefOfflineBanner'
 
 const DAYS = [
   { key: 'monday', label: 'Lunes' },
@@ -22,6 +24,7 @@ const EMPTY_FORM = {
 }
 
 export default function ChefAvailabilityPage() {
+  const { isOnline } = useConnectivity()
   const [form, setForm] = useState(EMPTY_FORM)
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
@@ -30,9 +33,15 @@ export default function ChefAvailabilityPage() {
   useEffect(() => {
     fetchChefAvailability()
       .then((data) => setForm({ ...EMPTY_FORM, ...data, weekly_schedule: data.weekly_schedule || [] }))
-      .catch(() => setMessage('No se pudo cargar tu disponibilidad actual.'))
+      .catch(() => {
+        if (!isOnline) {
+          setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+        } else {
+          setMessage('No se pudo cargar tu disponibilidad actual.')
+        }
+      })
       .finally(() => setLoading(false))
-  }, [])
+  }, [isOnline])
 
   const activeSlots = useMemo(
     () => (form.weekly_schedule || []).filter((slot) => slot.enabled !== false),
@@ -112,9 +121,17 @@ export default function ChefAvailabilityPage() {
 
   return (
     <section className="space-y-5">
+      <ChefOfflineBanner />
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Disponibilidad</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            Disponibilidad
+            {form.synced === false && (
+              <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 border border-amber-500/30">
+                Pendiente de sincronizar
+              </span>
+            )}
+          </h1>
           <p style={{ color: 'var(--muted)' }}>
             Define cuándo puedes recibir pedidos y qué modalidad atiendes en cada franja.
           </p>

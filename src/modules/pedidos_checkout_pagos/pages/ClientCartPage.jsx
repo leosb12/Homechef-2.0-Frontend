@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import LastLoadedNotice from '../../../shared/components/LastLoadedNotice'
-import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache'
+import { extractScreenSnapshotMeta, readScreenSnapshot } from '../../../shared/services/screen_cache'
 import { fetchCart, removeCartItem, updateCartItem } from '../services/cart_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
 
 export default function ClientCartPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { isOnline } = useConnectivity()
   const [searchParams, setSearchParams] = useSearchParams()
   const [cartData, setCartData] = useState({ carts: [], summary: { subtotal: 0, items_count: 0 } })
   const [selectedCartId, setSelectedCartId] = useState('')
@@ -19,18 +21,28 @@ export default function ClientCartPage() {
 
   useEffect(() => {
     loadCart()
-  }, [requestedCartId])
+  }, [requestedCartId, isOnline])
 
   async function loadCart() {
     setLoading(true)
     setMessage('')
     try {
+      const cachedSnapshot = await readScreenSnapshot('mod5.cart')
       const data = await fetchCart()
       setCartData(data)
       setOfflineMeta(extractScreenSnapshotMeta(data))
-      if (data?.__offline) {
+      
+      if (!isOnline && (!data || !data.carts || data.carts.length === 0)) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else if (!data?.__offline && cachedSnapshot && (cachedSnapshot.__offline || cachedSnapshot.carts?.some(c => c.items?.some(i => i.id?.startsWith('temp-'))))) {
+        const changed = detectCartChanges(cachedSnapshot, data)
+        if (changed) {
+          setMessage('Algunos productos cambiaron desde tu última sincronización. Revisa tu carrito antes de continuar.')
+        }
+      } else if (data?.__offline) {
         setMessage('')
       }
+
       setSelectedCartId((current) => {
         if (requestedCartId && data.carts?.some((cart) => cart.id === requestedCartId)) {
           return requestedCartId
@@ -40,7 +52,11 @@ export default function ClientCartPage() {
       })
     } catch (error) {
       setOfflineMeta(null)
-      setMessage(error?.response?.data?.detail || 'No se pudo cargar el carrito.')
+      if (!isOnline) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setMessage(error?.response?.data?.detail || 'No se pudo cargar el carrito.')
+      }
     } finally {
       setLoading(false)
     }
@@ -121,6 +137,11 @@ export default function ClientCartPage() {
         </div>
       )}
       {offlineMeta ? <LastLoadedNotice cachedAt={offlineMeta.cachedAt} /> : null}
+      {!isOnline && (
+        <div className="rounded-xl border p-3 text-sm font-semibold" style={{ borderColor: 'rgba(139, 92, 246, 0.25)', backgroundColor: 'rgba(139, 92, 246, 0.05)', color: '#a78bfa' }}>
+          Los precios y disponibilidad se validarán nuevamente al volver conexión.
+        </div>
+      )}
 
       {repeatSummary ? (
         <div className="rounded-2xl border p-4" style={{ borderColor: 'rgba(34,197,94,.18)', backgroundColor: 'rgba(34,197,94,.08)' }}>
@@ -321,4 +342,21 @@ function recalculateSummary(payload) {
       currency: 'BOB',
     },
   }
+}
+
+function detectCartChanges(cached, fresh) {
+  if (!cached || !fresh) return false
+  const cachedCarts = cached.carts || []
+  const freshCarts = fresh.carts || []
+
+  for (const cCart of cachedCarts) {
+    const fCart = freshCarts.find(fc => String(fc.chef?.id) === String(cCart.chef?.id))
+    for (const cItem of (cCart.items || [])) {
+      const fItem = fCart?.items?.find(fi => String(fi.dish_id) === String(cItem.dish_id))
+      if (!fItem) return true
+      if (Number(fItem.unit_price) !== Number(cItem.unit_price)) return true
+      if (fItem.available_portions < fItem.quantity || fItem.available_portions < cItem.quantity) return true
+    }
+  }
+  return false
 }

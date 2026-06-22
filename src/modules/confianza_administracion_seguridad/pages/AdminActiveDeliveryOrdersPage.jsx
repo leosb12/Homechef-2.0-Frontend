@@ -4,7 +4,13 @@ import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache
 import {
   fetchActiveDeliveryOrderDetail,
   fetchActiveDeliveryOrders,
+  updateOrderDeliveryStatus,
+  reassignOrderRider,
+  registerOrderIncident,
+  registerOrderObservation,
 } from '../services/delivery_active_orders_admin_service'
+import OfflineBanner from '../components/OfflineBanner'
+import { getPendingMutations } from '../services/adminOfflineRepository'
 
 const STATUS_FILTERS = [
   { value: 'ALL', label: 'Todos' },
@@ -42,6 +48,36 @@ export default function AdminActiveDeliveryOrdersPage() {
   const [summary, setSummary] = useState({})
   const [selectedOrderId, setSelectedOrderId] = useState('')
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [riders, setRiders] = useState([])
+  const [incidentText, setIncidentText] = useState('')
+  const [observationText, setObservationText] = useState('')
+  const [pendingOps, setPendingOps] = useState([])
+
+  const loadPendingOps = async () => {
+    try {
+      const queue = await getPendingMutations()
+      setPendingOps(queue || [])
+    } catch (e) {
+      console.warn("Could not load pending mutations:", e)
+    }
+  }
+
+  const loadRiders = async () => {
+    try {
+      const { fetchDeliveryDrivers } = await import('../services/delivery_driver_admin_service')
+      const data = await fetchDeliveryDrivers()
+      setRiders(data?.items || [])
+    } catch (e) {
+      console.warn("Could not load riders:", e)
+    }
+  }
+
+  useEffect(() => {
+    void loadPendingOps()
+    void loadRiders()
+    window.addEventListener('admin-offline-queue-changed', loadPendingOps)
+    return () => window.removeEventListener('admin-offline-queue-changed', loadPendingOps)
+  }, [])
 
   useEffect(() => {
     void loadOrders()
@@ -124,6 +160,7 @@ export default function AdminActiveDeliveryOrdersPage() {
 
   return (
     <section className="space-y-6">
+      <OfflineBanner moduleName="orders" />
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight">
@@ -264,13 +301,22 @@ export default function AdminActiveDeliveryOrdersPage() {
                     </td>
                   </tr>
                 ) : (
-                  filteredItems.map((item) => (
-                    <tr
-                      key={item.order_id}
-                      className="border-t"
-                      style={{ borderColor: 'rgba(148,163,184,.14)' }}
-                    >
-                      <td className="px-5 py-5 align-top font-semibold">{shortId(item.order_id)}</td>
+                  filteredItems.map((item) => {
+                    const isPending = pendingOps.some(op => op.entity === 'orders' && String(op.server_id) === String(item.order_id) && op.status === 'pending');
+                    return (
+                      <tr
+                        key={item.order_id}
+                        className="border-t"
+                        style={{ borderColor: 'rgba(148,163,184,.14)' }}
+                      >
+                        <td className="px-5 py-5 align-top font-semibold flex items-center gap-1.5">
+                          <span>{shortId(item.order_id)}</span>
+                          {isPending && (
+                            <span className="inline-flex rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-500/30 animate-pulse shrink-0">
+                              Pendiente
+                            </span>
+                          )}
+                        </td>
                       <td className="px-5 py-5 align-top">{item.client_name}</td>
                       <td className="px-5 py-5 align-top">{item.chef_name}</td>
                       <td className="px-5 py-5 align-top">
@@ -311,7 +357,8 @@ export default function AdminActiveDeliveryOrdersPage() {
                         </button>
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -344,6 +391,131 @@ export default function AdminActiveDeliveryOrdersPage() {
             </div>
           ) : (
             <div className="mt-6 space-y-5">
+              {/* Acciones de Administrador */}
+              <div className="rounded-2xl border p-4 space-y-4" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+                <h3 className="text-xs font-bold uppercase tracking-[.18em]" style={{ color: 'var(--muted)' }}>
+                  Acciones de Administrador
+                </h3>
+                
+                {/* 1. Cambiar Estado */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>Cambiar Estado:</label>
+                  <select
+                    value={selectedOrder.status || selectedOrder.order_status || ''}
+                    onChange={async (e) => {
+                      const newStatus = e.target.value;
+                      if (!newStatus) return;
+                      try {
+                        await updateOrderDeliveryStatus(selectedOrder.id, newStatus);
+                        await loadOrders();
+                        // reload detail as well
+                        await loadDetail(selectedOrder.id);
+                      } catch (err) {
+                        alert(err.message || 'Error al actualizar estado');
+                      }
+                    }}
+                    className="w-full text-xs rounded-xl border p-2 bg-transparent outline-none"
+                    style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
+                  >
+                    <option value="" style={{ color: '#000' }}>Seleccionar estado...</option>
+                    <option value="READY_FOR_DELIVERY" style={{ color: '#000' }}>Listo para delivery</option>
+                    <option value="OUT_FOR_DELIVERY" style={{ color: '#000' }}>En camino</option>
+                    <option value="DELIVERED" style={{ color: '#000' }}>Entregado</option>
+                    <option value="CANCELLED" style={{ color: '#000' }}>Cancelado</option>
+                  </select>
+                </div>
+
+                {/* 2. Reasignar Repartidor */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>Reasignar Repartidor:</label>
+                  <select
+                    value={selectedOrder.delivery_assignment?.delivery_user?.id || ''}
+                    onChange={async (e) => {
+                      const newRiderId = e.target.value;
+                      if (!newRiderId) return;
+                      try {
+                        await reassignOrderRider(selectedOrder.id, newRiderId);
+                        await loadOrders();
+                        await loadDetail(selectedOrder.id);
+                      } catch (err) {
+                        alert(err.message || 'Error al reasignar repartidor');
+                      }
+                    }}
+                    className="w-full text-xs rounded-xl border p-2 bg-transparent outline-none"
+                    style={{ borderColor: 'var(--line)', color: 'var(--text)' }}
+                  >
+                    <option value="" style={{ color: '#000' }}>Seleccionar repartidor...</option>
+                    {riders.map(r => (
+                      <option key={r.user_id} value={r.user_id} style={{ color: '#000' }}>
+                        {r.first_name} {r.last_name} ({r.approval_status})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Reportar Incidencia */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>Reportar Incidencia:</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Describir incidencia..."
+                      value={incidentText}
+                      onChange={(e) => setIncidentText(e.target.value)}
+                      className="flex-1 text-xs rounded-xl border p-2 bg-transparent outline-none"
+                      style={{ borderColor: 'var(--line)' }}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!incidentText.trim()) return;
+                        try {
+                          await registerOrderIncident(selectedOrder.id, incidentText);
+                          setIncidentText('');
+                          await loadOrders();
+                          await loadDetail(selectedOrder.id);
+                        } catch (err) {
+                          alert(err.message || 'Error al registrar incidencia');
+                        }
+                      }}
+                      className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold whitespace-nowrap"
+                    >
+                      Reportar
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4. Registrar Observación */}
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold" style={{ color: 'var(--muted)' }}>Registrar Observación:</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Nota de administración..."
+                      value={observationText}
+                      onChange={(e) => setObservationText(e.target.value)}
+                      className="flex-1 text-xs rounded-xl border p-2 bg-transparent outline-none"
+                      style={{ borderColor: 'var(--line)' }}
+                    />
+                    <button
+                      onClick={async () => {
+                        if (!observationText.trim()) return;
+                        try {
+                          await registerOrderObservation(selectedOrder.id, observationText);
+                          setObservationText('');
+                          await loadOrders();
+                          await loadDetail(selectedOrder.id);
+                        } catch (err) {
+                          alert(err.message || 'Error al registrar observación');
+                        }
+                      }}
+                      className="px-3 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-semibold whitespace-nowrap"
+                    >
+                      Guardar
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <DetailBlock
                 title={`Pedido ${shortId(selectedOrder.id)}`}
                 rows={[

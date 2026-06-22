@@ -55,6 +55,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 import { api } from '../../shared/services/api'
+import { useConnectivity } from '../../shared/hooks/useConnectivity'
 
 export default function ChefLayout() {
   const user = useAuthSession((state) => state.user)
@@ -63,9 +64,10 @@ export default function ChefLayout() {
   const accessToken = useAuthSession((state) => state.accessToken)
   const location = useLocation()
   const [isInitializing, setIsInitializing] = useState(true)
+  const { isOnline } = useConnectivity()
 
   useEffect(() => {
-    if (role === 'COCINERO' && accessToken && !user?.chef_profile) {
+    if (role === 'COCINERO' && accessToken && accessToken !== 'offline_placeholder_token' && !user?.chef_profile && isOnline) {
       api.get('/auth/session/')
         .then(res => {
           if (res.data?.user) {
@@ -77,7 +79,7 @@ export default function ChefLayout() {
     } else {
       setIsInitializing(false)
     }
-  }, [role, accessToken, user, setSession])
+  }, [role, accessToken, user, setSession, isOnline])
   
   const status = user?.chef_profile?.status
 

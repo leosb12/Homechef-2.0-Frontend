@@ -1,4 +1,5 @@
 import { api, cachedGet, invalidateApiCache } from '../../../shared/services/api'
+import { readWithScreenCache } from '../../../shared/services/screen_cache'
 import {
   mutateOfflineFirst,
   readListWithOfflineFallback,
@@ -7,7 +8,7 @@ import {
 } from '../../../shared/services/offline_helpers'
 
 export async function fetchChefDashboard() {
-  return cachedGet('/chef/dashboard/')
+  return readWithScreenCache('chef.dashboard', () => cachedGet('/chef/dashboard/'))
 }
 
 export async function fetchChefProfile() {
@@ -26,7 +27,7 @@ export async function saveChefProfile(payload) {
     'chef_profiles',
     'UPDATE',
     payload,
-    { local_id: 'chef-profile-me', server_id: 'me' },
+    { local_id: 'chef-profile-me', server_id: 'me', endpoint: '/chef/profile/', method: 'PUT' },
     async () => {
       const { data } = await api.put('/chef/profile/', payload)
       invalidateApiCache('/chef/profile/')
@@ -42,7 +43,7 @@ export async function saveChefLocation(payload) {
     'chef_profiles',
     'UPDATE',
     payload,
-    { local_id: 'chef-profile-location-me', server_id: 'me' },
+    { local_id: 'chef-profile-location-me', server_id: 'me', endpoint: '/chef/profile/location/', method: 'PUT' },
     async () => {
       const { data } = await api.put('/chef/profile/location/', payload)
       invalidateApiCache('/chef/profile/')
@@ -69,7 +70,13 @@ export async function saveChefAvailability(payload) {
     'chef_availability',
     'UPDATE',
     payload,
-    { local_id: 'chef-availability-me', server_id: payload.id || payload._id || 'me', version: payload.version },
+    {
+      local_id: 'chef-availability-me',
+      server_id: payload.id || payload._id || 'me',
+      version: payload.version,
+      endpoint: '/chef/availability/',
+      method: 'PUT',
+    },
     async () => {
       const { data } = await api.put('/chef/availability/', payload)
       invalidateApiCache('/chef/availability/')
@@ -91,7 +98,7 @@ export async function createChefDish(payload) {
     'dishes',
     'CREATE',
     payload,
-    { local_id: localId, server_id: null, version: payload.version },
+    { local_id: localId, server_id: null, version: payload.version, endpoint: '/chef/dishes/', method: 'POST' },
     async () => {
       const { data } = await api.post('/chef/dishes/', payload)
       invalidateChefKitchenCache()
@@ -106,7 +113,7 @@ export async function updateChefDish(dishId, payload) {
     'dishes',
     'UPDATE',
     payload,
-    { local_id: String(dishId), server_id: dishId, version: payload.version },
+    { local_id: String(dishId), server_id: dishId, version: payload.version, endpoint: `/chef/dishes/${dishId}/`, method: 'PUT' },
     async () => {
       const { data } = await api.put(`/chef/dishes/${dishId}/`, payload)
       invalidateChefKitchenCache()
@@ -122,7 +129,7 @@ export async function deleteChefDish(dishId) {
     'dishes',
     'DELETE',
     { id: dishId },
-    { local_id: String(dishId), server_id: dishId },
+    { local_id: String(dishId), server_id: dishId, endpoint: `/chef/dishes/${dishId}/`, method: 'DELETE' },
     async () => {
       const { data } = await api.delete(`/chef/dishes/${dishId}/`)
       invalidateChefKitchenCache()
@@ -149,7 +156,7 @@ export async function saveChefMenu(payload) {
     'daily_menus',
     'UPDATE',
     payload,
-    { local_id: 'daily-menu-current', server_id: 'current', version: payload.version },
+    { local_id: 'daily-menu-current', server_id: 'current', version: payload.version, endpoint: '/chef/menu/', method: 'PUT' },
     async () => {
       const { data } = await api.put('/chef/menu/', payload)
       invalidateChefKitchenCache()
@@ -176,7 +183,7 @@ export async function createChefInventoryItem(payload) {
     'chef_inventory',
     'CREATE',
     payload,
-    { local_id: localId, server_id: null },
+    { local_id: localId, server_id: null, endpoint: '/chef/inventory/', method: 'POST' },
     async () => {
       const { data } = await api.post('/chef/inventory/', payload)
       invalidateApiCache('/chef/inventory/')
@@ -191,7 +198,7 @@ export async function updateChefInventoryItem(itemId, payload) {
     'chef_inventory',
     'UPDATE',
     payload,
-    { local_id: String(itemId), server_id: itemId },
+    { local_id: String(itemId), server_id: itemId, endpoint: `/chef/inventory/${itemId}/`, method: 'PUT' },
     async () => {
       const { data } = await api.put(`/chef/inventory/${itemId}/`, payload)
       invalidateApiCache('/chef/inventory/')
@@ -206,7 +213,7 @@ export async function deleteChefInventoryItem(itemId) {
     'chef_inventory',
     'DELETE',
     { id: itemId },
-    { local_id: String(itemId), server_id: itemId },
+    { local_id: String(itemId), server_id: itemId, endpoint: `/chef/inventory/${itemId}/`, method: 'DELETE' },
     async () => {
       const { data } = await api.delete(`/chef/inventory/${itemId}/`)
       invalidateApiCache('/chef/inventory/')
@@ -225,5 +232,5 @@ export async function fetchChefFinancesSummary(startDate, endDate) {
   const query = params.toString()
   if (query) url += `?${query}`
   
-  return cachedGet(url)
+  return readWithScreenCache(`chef.finances.${startDate || 'all'}.${endDate || 'all'}`, () => cachedGet(url))
 }

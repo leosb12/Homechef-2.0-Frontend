@@ -14,6 +14,10 @@ import {
   clearChatbotPageContext,
   setChatbotPageContext,
 } from "../../user_manual_chatbot/services/chatbotPageContext";
+import { useConnectivity } from "../../../shared/hooks/useConnectivity";
+import ChefOfflineBanner from "../components/ChefOfflineBanner";
+import { syncNow } from "../../../shared/services/sync_service";
+import { retryOperationByLocalId } from "../../../shared/services/offline_queue";
 
 const STATUS_LABELS = {
   published: "Publicado",
@@ -40,6 +44,7 @@ function emptyForm() {
     tags: [],
     allergens: [],
     image_url: "",
+    image_file: null,
     status: "draft",
   };
 }
@@ -60,11 +65,13 @@ function normalizeDish(dish) {
     tags: Array.isArray(dish.tags) ? dish.tags : [],
     allergens: Array.isArray(dish.allergens) ? dish.allergens : [],
     image_url: dish.image_url || "",
+    image_file: dish.image_file || null,
     status: dish.status || "draft",
   };
 }
 
 export default function ChefDishesPage() {
+  const { isOnline } = useConnectivity();
   const [items, setItems] = useState([]);
   const [selectedId, setSelectedId] = useState("");
   const [search, setSearch] = useState("");
@@ -80,7 +87,19 @@ export default function ChefDishesPage() {
   const load = async () => {
     try {
       const data = await fetchChefDishes();
-      const nextItems = data.items || [];
+      const nextItems = (data.items || []).map((dish) => {
+        if (dish.image_file && (!dish.image_url || dish.image_url.startsWith("blob:"))) {
+          try {
+            return {
+              ...dish,
+              image_url: URL.createObjectURL(dish.image_file),
+            };
+          } catch (e) {
+            console.error("Error creating URL for offline image file", e);
+          }
+        }
+        return dish;
+      });
       setItems(nextItems);
       if (selectedId) {
         const found = nextItems.find((x) => x._id === selectedId);
@@ -189,21 +208,37 @@ export default function ChefDishesPage() {
   const onPickImage = async (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    if (!isOnline) {
+      setForm((prev) => ({
+        ...prev,
+        image_file: file,
+        image_url: URL.createObjectURL(file),
+      }));
+      setNotice("Imagen seleccionada offline. Se subirá al sincronizar.");
+      event.target.value = "";
+      return;
+    }
     setUploadingImage(true);
     try {
       const uploaded = await uploadFile(file, "dish");
       setForm((prev) => ({
         ...prev,
         image_url: uploaded.public_url || uploaded.file_path,
+        image_file: null,
       }));
       setNotice("Imagen subida correctamente.");
     } catch (err) {
       setNotice(
         err?.response?.data?.detail ||
           err?.message ||
-          "No se pudo subir la imagen.",
+          "No se pudo subir la imagen. Guardada localmente para reintento.",
         true,
       );
+      setForm((prev) => ({
+        ...prev,
+        image_file: file,
+        image_url: URL.createObjectURL(file),
+      }));
     } finally {
       setUploadingImage(false);
       event.target.value = "";
@@ -211,7 +246,7 @@ export default function ChefDishesPage() {
   };
 
   const onRemoveImage = () => {
-    setForm((prev) => ({ ...prev, image_url: "" }));
+    setForm((prev) => ({ ...prev, image_url: "", image_file: null }));
   };
 
   const toggleArrayValue = (field, value) => {
@@ -243,6 +278,10 @@ export default function ChefDishesPage() {
         action: publish ? "publish" : "draft",
         status: publish ? "published" : "draft",
       };
+
+      if (form.image_file) {
+        payload.image_file = form.image_file;
+      }
 
       if (selectedId) {
         await updateChefDish(selectedId, payload);
@@ -311,10 +350,30 @@ export default function ChefDishesPage() {
     }
   };
 
+  const handleRetry = async (dish) => {
+    setLoadingAction(`retry-${dish._id}`);
+    try {
+      const success = await retryOperationByLocalId('dishes', dish._id);
+      if (success) {
+        setNotice("Reintento de sincronización programado.");
+        void syncNow(true);
+      } else {
+        setNotice("No se pudo programar el reintento del plato.", true);
+      }
+    } catch (err) {
+      setNotice(err?.message || "Error al intentar reintentar.", true);
+    } finally {
+      setLoadingAction((current) =>
+        current === `retry-${dish._id}` ? "" : current,
+      );
+    }
+  };
+
   const isEditing = !!selectedId;
 
   return (
     <section className="space-y-4">
+      <ChefOfflineBanner />
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Mis platos</h1>
@@ -423,7 +482,34 @@ export default function ChefDishesPage() {
                     <p className="text-sm mt-1">
                       {STATUS_LABELS[dish.status] || dish.status}
                     </p>
+                    {dish.synced === false && (
+                      <div className="space-y-1 mt-1">
+                        {dish.__op_status === 'failed' || dish.__op_status === 'failed_permission' ? (
+                          <div className="text-[10px] font-bold px-2 py-1 rounded bg-red-500/20 text-red-600 border border-red-500/30">
+                            ❌ Error: {dish.__op_error || 'Error de sincronización'}
+                          </div>
+                        ) : (
+                          <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 border border-amber-500/30 animate-pulse">
+                            ⏳ Pendiente de sincronizar
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-2 mt-2">
+                      {(dish.synced === false && (dish.__op_status === 'failed' || dish.__op_status === 'failed_permission')) && (
+                        <LoadingButton
+                          type="button"
+                          className="px-2 py-1 text-xs rounded border bg-amber-500/10 border-amber-500/30 text-amber-600 font-bold"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRetry(dish);
+                          }}
+                          loading={loadingAction === `retry-${dish._id}`}
+                          loadingLabel="..."
+                        >
+                          Reintentar
+                        </LoadingButton>
+                      )}
                       <LoadingButton
                         type="button"
                         className="px-2 py-1 text-xs rounded border"

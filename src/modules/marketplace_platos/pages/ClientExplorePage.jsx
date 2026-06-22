@@ -5,10 +5,12 @@ import { addFavorite, fetchClientExplore, fetchFavorites, removeFavorite } from 
 import { useThemeSession } from '../../../shared/services/theme_session'
 import dashboardClaro from '../../../shared/assets/dashboard-claro.png'
 import dashboardOscuro from '../../../shared/assets/dashboard-oscuro.png'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
 
 export default function ClientExplorePage() {
   const navigate = useNavigate()
   const theme = useThemeSession((state) => state.theme)
+  const { isOnline } = useConnectivity()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -48,7 +50,11 @@ export default function ClientExplorePage() {
         navigate('/login')
         return
       }
-      setError('No se pudo cargar la exploracion de platos. Intenta nuevamente.')
+      if (!isOnline) {
+        setError('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setError('No se pudo cargar la exploracion de platos. Intenta nuevamente.')
+      }
     } finally {
       setLoading(false)
     }

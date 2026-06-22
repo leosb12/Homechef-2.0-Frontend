@@ -7,11 +7,15 @@ import ReceiptActions from '../components/ReceiptActions'
 import RepeatOrderSummaryModal from '../components/RepeatOrderSummaryModal'
 import { createChefReview, createDishReview } from '../../marketplace_platos/services/public_dashboard_service'
 import { cancelMyOrder, fetchMyOrderDetail, repeatMyOrder } from '../services/order_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import { getPendingOperations } from '../../../shared/services/offline_queue'
 
 export default function ClientOrderDetailPage() {
   const navigate = useNavigate()
   const { id = '' } = useParams()
+  const { isOnline } = useConnectivity()
   const [order, setOrder] = useState(null)
+  const [pendingOps, setPendingOps] = useState([])
   const [loading, setLoading] = useState(true)
   const [cancelling, setCancelling] = useState(false)
   const [repeating, setRepeating] = useState(false)
@@ -24,7 +28,7 @@ export default function ClientOrderDetailPage() {
 
   useEffect(() => {
     load()
-  }, [id])
+  }, [id, isOnline])
 
   async function load() {
     setLoading(true)
@@ -33,9 +37,15 @@ export default function ClientOrderDetailPage() {
       const data = await fetchMyOrderDetail(id)
       setOrder(data.order || null)
       setOfflineMeta(extractScreenSnapshotMeta(data))
+      const ops = await getPendingOperations()
+      setPendingOps(ops || [])
     } catch (error) {
       setOfflineMeta(null)
-      setMessage(error?.response?.data?.detail || 'No se pudo cargar el detalle del pedido.')
+      if (!isOnline) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setMessage(error?.response?.data?.detail || 'No se pudo cargar el detalle del pedido.')
+      }
     } finally {
       setLoading(false)
     }
@@ -112,6 +122,11 @@ export default function ClientOrderDetailPage() {
               <div>
                 <h2 className="text-xl font-semibold">Pedido {order.id}</h2>
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>Cocinero: {order.chef?.name || 'HomeChef'}</p>
+                {pendingOps.some(op => op.entity === 'client_orders' && String(op.local_id || op.payload?.order_id) === String(order.id)) && (
+                  <span className="inline-block text-xs px-2.5 py-1 rounded-full font-bold animate-pulse mt-1" style={{ backgroundColor: 'rgba(249,115,22,.08)', color: '#c2410c' }}>
+                    Pendiente de sincronizar
+                  </span>
+                )}
               </div>
               <div className="text-sm text-right">
                 <p>Estado: <strong>{labelForStatus(order.status)}</strong></p>

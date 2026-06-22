@@ -1,7 +1,9 @@
-﻿import { cloneElement, isValidElement, useEffect, useMemo, useState } from 'react'
+import { cloneElement, isValidElement, useEffect, useMemo, useState } from 'react'
 import { changePassword, fetchProfile, updateProfile } from '../services/auth_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
 
 export default function ProfilePage() {
+  const { isOnline } = useConnectivity()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [savingProfile, setSavingProfile] = useState(false)
@@ -48,13 +50,17 @@ export default function ProfilePage() {
           notify_gmail: data.notify_gmail ?? true,
           notify_push: data.notify_push ?? true,
         })
-      } catch {
-        setError('No se pudo cargar el perfil.')
+      } catch (err) {
+        if (!isOnline) {
+          setError('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+        } else {
+          setError('No se pudo cargar el perfil.')
+        }
       } finally {
         setLoading(false)
       }
     })()
-  }, [])
+  }, [isOnline])
 
   useEffect(() => {
     if (!notifMessage) return
@@ -82,6 +88,10 @@ export default function ProfilePage() {
     e.preventDefault()
     setError('')
     setSuccess('')
+    if (!isOnline) {
+      setError('El cambio de contraseña requiere conexión.')
+      return
+    }
     setSavingPassword(true)
     try {
       await changePassword(pwd)

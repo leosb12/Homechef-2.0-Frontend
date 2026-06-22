@@ -1,5 +1,7 @@
 import { api, cachedGet, invalidateApiCache } from '../../../shared/services/api'
 import { supabase } from '../../../shared/services/supabase_client'
+import { readWithScreenCache, saveScreenSnapshot, readScreenSnapshot } from '../../../shared/services/screen_cache'
+import { mutateOfflineFirst } from '../../../shared/services/offline_helpers'
 
 export async function registerUser(payload) {
   const isFormData = payload instanceof FormData
@@ -95,13 +97,26 @@ export async function loginUser(payload) {
   const user = backendUser || buildUserFromAuthUser(supabaseUser)
   const redirect_path = sessionData?.redirect_path || defaultRedirectForRole(role)
 
-  return {
+  const sessionResponse = {
     access,
     refresh,
     role,
     redirect_path,
     user,
   }
+
+  // Guardar la última sesión válida para uso offline seguro
+  try {
+    const { saveLastValidSession } = await import('../../../shared/services/offlineSessionService')
+    await saveLastValidSession({
+      ...user,
+      role
+    })
+  } catch (err) {
+    console.error('[auth_service] Error al guardar la sesión offline:', err)
+  }
+
+  return sessionResponse
 }
 
 export async function requestPasswordRecovery(payload) {
@@ -130,13 +145,25 @@ export async function confirmPasswordRecovery(payload) {
 }
 
 export async function fetchProfile() {
-  return cachedGet('/auth/profile/')
+  return readWithScreenCache('client.profile', () => cachedGet('/auth/profile/'))
 }
 
 export async function updateProfile(payload) {
-  const { data } = await api.put('/auth/profile/', payload)
-  invalidateApiCache('/auth/profile/')
-  return data
+  return mutateOfflineFirst(
+    'client_profiles',
+    'UPDATE',
+    payload,
+    { local_id: 'client-profile-me', server_id: 'me', endpoint: '/auth/profile/', method: 'PUT' },
+    async () => {
+      const { data } = await api.put('/auth/profile/', payload)
+      invalidateApiCache('/auth/profile/')
+      return data
+    },
+    async (data) => {
+      const current = await readScreenSnapshot('client.profile') || {}
+      await saveScreenSnapshot('client.profile', { ...current, ...data })
+    }
+  )
 }
 
 export async function changePassword(payload) {

@@ -3,6 +3,8 @@ import {
   fetchDeliveryDrivers,
   updateDeliveryDriverStatus,
 } from '../services/delivery_driver_admin_service'
+import OfflineBanner from '../components/OfflineBanner'
+import { getPendingMutations } from '../services/adminOfflineRepository'
 
 const STATUS_OPTIONS = [
   { value: '', label: 'Todos' },
@@ -82,6 +84,22 @@ export default function AdminDeliveryDriversPage() {
   const [statusFilter, setStatusFilter] = useState('')
   const [search, setSearch] = useState('')
   const [busyUserId, setBusyUserId] = useState('')
+  const [pendingOps, setPendingOps] = useState([])
+
+  const loadPendingOps = async () => {
+    try {
+      const queue = await getPendingMutations()
+      setPendingOps(queue || [])
+    } catch (e) {
+      console.warn("Could not load pending mutations:", e)
+    }
+  }
+
+  useEffect(() => {
+    void loadPendingOps()
+    window.addEventListener('admin-offline-queue-changed', loadPendingOps)
+    return () => window.removeEventListener('admin-offline-queue-changed', loadPendingOps)
+  }, [])
 
   useEffect(() => {
     void loadData(statusFilter)
@@ -160,6 +178,7 @@ export default function AdminDeliveryDriversPage() {
 
   return (
     <section className="space-y-6">
+      <OfflineBanner moduleName="riders" />
       <div className="flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight">
@@ -364,6 +383,7 @@ export default function AdminDeliveryDriversPage() {
                     STATUS_BADGE[item.approval_status] ||
                     STATUS_BADGE.recien_registrado
                   const nextAction = NEXT_ACTION[item.approval_status]
+                  const isPending = pendingOps.some(op => op.entity === 'riders' && (String(op.server_id) === String(item.user_id) || String(op.server_id) === String(item.id)) && op.status === 'pending');
                   return (
                     <tr
                       key={item.user_id}
@@ -425,12 +445,19 @@ export default function AdminDeliveryDriversPage() {
                       </td>
                       <td className="px-6 py-6 align-top">
                         <div className="space-y-3">
-                          <span
-                            className="inline-flex rounded-full px-4 py-2 text-xs font-semibold capitalize"
-                            style={{ backgroundColor: badge.bg, color: badge.color }}
-                          >
-                            {badge.label}
-                          </span>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="inline-flex rounded-full px-4 py-2 text-xs font-semibold capitalize"
+                              style={{ backgroundColor: badge.bg, color: badge.color }}
+                            >
+                              {badge.label}
+                            </span>
+                            {isPending && (
+                              <span className="inline-flex rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 border border-amber-500/30 animate-pulse">
+                                Pendiente
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs" style={{ color: 'var(--muted)' }}>
                             <div>
                               Disponibilidad manual:{' '}

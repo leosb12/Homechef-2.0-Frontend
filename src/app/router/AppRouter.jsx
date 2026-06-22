@@ -46,17 +46,66 @@ import AdminChefsValidationPage from '../../modules/confianza_administracion_seg
 import AdminPublicationsPage from '../../modules/confianza_administracion_seguridad/pages/AdminPublicationsPage'
 import AdminDashboardPage from '../../modules/confianza_administracion_seguridad/pages/AdminDashboardPage'
 import AdminFraudRiskPage from '../../modules/confianza_administracion_seguridad/pages/AdminFraudRiskPage'
+import AdminAuditPage from '../../modules/confianza_administracion_seguridad/pages/AdminAuditPage'
+import RiderAssignedPage from '../../modules/delivery_rider/pages/RiderAssignedPage'
+import RiderActivePage from '../../modules/delivery_rider/pages/RiderActivePage'
+import RiderRoutesPage from '../../modules/delivery_rider/pages/RiderRoutesPage'
+import RiderIncidentsPage from '../../modules/delivery_rider/pages/RiderIncidentsPage'
+import RiderHistoryPage from '../../modules/delivery_rider/pages/RiderHistoryPage'
+import RiderProfilePage from '../../modules/delivery_rider/pages/RiderProfilePage'
 import { useAuthSession } from '../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session'
 
 function Page({ title }) { return <div><h2 className="text-xl font-semibold">{title}</h2></div> }
 
 export default function AppRouter() {
-  const syncFromStorage = useAuthSession((state) => state.syncFromStorage)
+  const authStatus = useAuthSession((state) => state.authStatus)
+  const initializeAuth = useAuthSession((state) => state.initializeAuth)
   
   useEffect(() => {
-    syncFromStorage()
-  }, [syncFromStorage])
-  
+    initializeAuth()
+  }, [initializeAuth])
+
+  if (authStatus === 'checking') {
+    return (
+      <div 
+        className="min-h-screen flex flex-col items-center justify-center p-6 text-center select-none"
+        style={{
+          background: 'radial-gradient(circle at 50% 50%, #151b3d 0%, #080c21 100%)',
+          color: '#ffffff',
+          fontFamily: "'Outfit', 'Inter', sans-serif"
+        }}
+      >
+        <div className="flex flex-col items-center max-w-md">
+          {/* Custom animated loader ring */}
+          <div className="relative h-20 w-20 mb-8 flex items-center justify-center">
+            <div 
+              className="absolute inset-0 rounded-full border-4 border-t-violet-500 border-r-transparent border-b-cyan-400 border-l-transparent animate-spin"
+              style={{ animationDuration: '1.2s' }}
+            />
+            <div 
+              className="absolute inset-2 rounded-full border-4 border-t-transparent border-r-fuchsia-500 border-b-transparent border-l-purple-500 animate-spin"
+              style={{ animationDuration: '2s', animationDirection: 'reverse' }}
+            />
+            <div className="text-3xl filter drop-shadow-[0_4px_10px_rgba(167,139,250,0.4)]">👨‍🍳</div>
+          </div>
+          
+          <h2 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-violet-300 via-fuchsia-200 to-cyan-300">
+            Verificando sesión
+          </h2>
+          
+          <p className="text-slate-400 mt-3 text-base leading-relaxed font-medium">
+            Preparando tu cocina local offline-first...
+          </p>
+
+          {/* Micro decoration banner */}
+          <div className="mt-8 px-4 py-1.5 rounded-full border border-violet-500/20 bg-violet-500/5 text-xs text-violet-300/80 font-semibold tracking-wide">
+            ✩ SECURE GATEWAY ✩
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <Routes>
       <Route element={<PublicLayout />}>
@@ -116,14 +165,18 @@ export default function AppRouter() {
         <Route path="publications" element={<AdminPublicationsPage />} />
         <Route path="fraud" element={<AdminFraudRiskPage />} />
         <Route path="reports" element={<DynamicReportsPage />} />
+        <Route path="audit" element={<AdminAuditPage />} />
         <Route path="settings" element={<Page title="Configuracion" />} />
       </Route>
 
       <Route path="/delivery" element={<DeliveryLayout />}>
-        <Route path="assigned" element={<Page title="Entregas asignadas" />} />
-        <Route path="active" element={<Page title="Entregas activas" />} />
-        <Route path="routes" element={<Page title="Rutas" />} />
-        <Route path="incidents" element={<Page title="Incidencias" />} />
+        <Route path="assigned" element={<RiderAssignedPage />} />
+        <Route path="active" element={<RiderActivePage />} />
+        <Route path="routes" element={<RiderRoutesPage />} />
+        <Route path="incidents" element={<RiderIncidentsPage />} />
+        <Route path="history" element={<RiderHistoryPage />} />
+        <Route path="profile" element={<RiderProfilePage />} />
+        <Route path="notifications" element={<NotificationCenterPage viewerRole="rider" />} />
       </Route>
 
       <Route path="*" element={<Navigate to='/' replace />} />

@@ -3,6 +3,8 @@ import { fetchChefInventory, createChefInventoryItem, updateChefInventoryItem, d
 import LoadingButton from '../components/LoadingButton'
 import SearchableSelect from '../components/SearchableSelect'
 import { INGREDIENTES } from '../constants'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import ChefOfflineBanner from '../components/ChefOfflineBanner'
 
 function prettyLabel(value) {
   return value
@@ -37,6 +39,7 @@ function normalizeItem(item) {
 }
 
 export default function ChefInventoryPage() {
+  const { isOnline } = useConnectivity()
   const [items, setItems] = useState([])
   const [selectedId, setSelectedId] = useState('')
   const [search, setSearch] = useState('')
@@ -62,9 +65,13 @@ export default function ChefInventoryPage() {
       }
     } catch (err) {
       setIsError(true)
-      setMessage(err?.response?.data?.detail || 'No se pudo cargar el inventario.')
+      if (!isOnline) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setMessage(err?.response?.data?.detail || 'No se pudo cargar el inventario.')
+      }
     }
-  }
+  };
 
   useEffect(() => {
     load()
@@ -153,6 +160,7 @@ export default function ChefInventoryPage() {
 
   return (
     <section className="space-y-4">
+      <ChefOfflineBanner />
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold">Inventario e Insumos</h1>
@@ -202,7 +210,14 @@ export default function ChefInventoryPage() {
               >
                 <div className="flex gap-3 items-center">
                   <div className="flex-1">
-                    <p className="font-semibold text-lg">{prettyLabel(item.name)}</p>
+                    <p className="font-semibold text-lg flex items-center gap-2">
+                      {prettyLabel(item.name)}
+                      {item.synced === false && (
+                        <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 border border-amber-500/30">
+                          Pendiente de sincronizar
+                        </span>
+                      )}
+                    </p>
                     <p className="text-sm" style={{ color: 'var(--muted)' }}>
                       Stock actual: <span className="font-medium text-[var(--text)]">{Number(item.current_stock).toFixed(2)} {item.unit_of_measure}</span>
                     </p>
