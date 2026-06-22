@@ -15,6 +15,8 @@ import {
   chefRejectOrder,
   fetchChefOrderDetail,
 } from '../services/order_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import ChefOfflineBanner from '../../gestion_cocinero/components/ChefOfflineBanner'
 
 const actionLabels = {
   accept: 'Aceptar',
@@ -30,6 +32,7 @@ const actionLabels = {
 export default function ChefOrderDetailPage() {
   const navigate = useNavigate()
   const { id = '' } = useParams()
+  const { isOnline } = useConnectivity()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [busyAction, setBusyAction] = useState('')
@@ -40,7 +43,7 @@ export default function ChefOrderDetailPage() {
 
   useEffect(() => {
     load()
-  }, [id])
+  }, [id, isOnline])
 
   async function load() {
     setLoading(true)
@@ -52,7 +55,11 @@ export default function ChefOrderDetailPage() {
       setOfflineMeta(extractScreenSnapshotMeta(data))
     } catch (error) {
       setOfflineMeta(null)
-      setMessage(error?.response?.data?.detail || 'No se pudo cargar el detalle del pedido.')
+      if (!isOnline) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setMessage(error?.response?.data?.detail || 'No se pudo cargar el detalle del pedido.')
+      }
     } finally {
       setLoading(false)
     }
@@ -91,6 +98,7 @@ export default function ChefOrderDetailPage() {
 
   return (
     <section className="space-y-4">
+      <ChefOfflineBanner />
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold">Detalle del pedido</h1>
@@ -113,9 +121,14 @@ export default function ChefOrderDetailPage() {
                 <h2 className="text-xl font-semibold">Pedido {order.id}</h2>
                 <p className="text-sm" style={{ color: 'var(--muted)' }}>Cliente: {order.client?.name || 'Cliente HomeChef'}</p>
               </div>
-              <div className="text-sm text-right">
+              <div className="text-sm text-right space-y-1">
                 <p>Estado: <strong>{labelForStatus(order.status)}</strong></p>
                 <p>Pago: <strong>{labelForPaymentStatus(order.payment?.status)}</strong></p>
+                {order.synced === false && (
+                  <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 border border-amber-500/30">
+                    Pendiente de sincronizar
+                  </span>
+                )}
               </div>
             </div>
 

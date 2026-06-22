@@ -5,6 +5,9 @@ import { uploadFile } from '../../../shared/services/uploads'
 import { changePassword } from '../../gestion_usuarios_acceso_suscripcion/services/auth_service'
 import { fetchChefProfile, saveChefLocation, saveChefProfile } from '../services/chef_service'
 import LoadingButton from '../components/LoadingButton'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import ChefOfflineBanner from '../components/ChefOfflineBanner'
+
 
 const SANTA_CRUZ = { lat: -17.7833, lng: -63.1821 }
 
@@ -32,7 +35,9 @@ function normalizeLocation(data) {
 }
 
 export default function ChefProfilePage() {
+  const { isOnline } = useConnectivity()
   const [general, setGeneral] = useState(normalizeGeneral({}))
+
   const [generalBase, setGeneralBase] = useState(normalizeGeneral({}))
   const [location, setLocation] = useState(normalizeLocation({}))
   const [locationBase, setLocationBase] = useState(normalizeLocation({}))
@@ -95,6 +100,11 @@ export default function ChefProfilePage() {
     if (!editingGeneral) return
     const file = event.target.files?.[0]
     if (!file) return
+    if (!isOnline) {
+      setNotice('La subida de imágenes requiere conexión. Puedes editar los demás campos offline.', true, 'general')
+      event.target.value = ''
+      return
+    }
     setUploadingImage(true)
     try {
       const uploaded = await uploadFile(file, 'chef-profile')
@@ -107,6 +117,7 @@ export default function ChefProfilePage() {
       event.target.value = ''
     }
   }
+
 
   const removeImage = () => {
     if (!editingGeneral) return
@@ -144,6 +155,10 @@ export default function ChefProfilePage() {
 
   const handleChangePassword = async (event) => {
     event.preventDefault()
+    if (!isOnline) {
+      setNotice('El cambio de contraseña requiere conexión.', true, 'general')
+      return
+    }
     setLoadingAction('change-password')
     try {
       await changePassword(passwordForm)
@@ -159,6 +174,7 @@ export default function ChefProfilePage() {
       setLoadingAction((current) => (current === 'change-password' ? '' : current))
     }
   }
+
 
   const onMapChange = ({ lat, lng }) => {
     if (!editingLocation) return
@@ -222,7 +238,9 @@ export default function ChefProfilePage() {
 
   return (
     <section className="space-y-4">
+      <ChefOfflineBanner />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+
         <h1 className="text-3xl font-bold">Perfil de cocinero</h1>
         <LoadingButton
           type="button"

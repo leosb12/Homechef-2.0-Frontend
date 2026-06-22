@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import AdminPlatformService from '../services/admin_platform_service'
 import ConfirmModal from '../../../shared/components/ConfirmModal'
+import OfflineBanner from '../components/OfflineBanner'
+import { getPendingMutations } from '../services/adminOfflineRepository'
 
 export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true)
@@ -9,9 +11,22 @@ export default function AdminUsersPage() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('ALL')
   const [confirmUser, setConfirmUser] = useState(null)
+  const [pendingOps, setPendingOps] = useState([])
+
+  const loadPendingOps = async () => {
+    try {
+      const queue = await getPendingMutations()
+      setPendingOps(queue || [])
+    } catch (e) {
+      console.warn("Could not load pending mutations:", e)
+    }
+  }
 
   useEffect(() => {
     void loadUsers()
+    void loadPendingOps()
+    window.addEventListener('admin-offline-queue-changed', loadPendingOps)
+    return () => window.removeEventListener('admin-offline-queue-changed', loadPendingOps)
   }, [])
 
   async function loadUsers() {
@@ -54,6 +69,7 @@ export default function AdminUsersPage() {
 
   return (
     <section className="space-y-6">
+      <OfflineBanner moduleName="users" />
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight">Gestión de Usuarios</h1>
@@ -116,6 +132,11 @@ export default function AdminUsersPage() {
                     <span className={`px-2 py-1 rounded-md text-xs font-semibold ${u.is_active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                       {u.is_active ? 'Activo' : 'Bloqueado'}
                     </span>
+                    {pendingOps.some(op => op.entity === 'users' && String(op.server_id) === String(u.id) && op.status === 'pending') && (
+                      <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-700 rounded-md border border-amber-500/30 animate-pulse">
+                        Pendiente de sincronizar
+                      </span>
+                    )}
                   </td>
                   <td className="px-5 py-4 align-middle">
                     {u.role !== 'ADMINISTRADOR' && (

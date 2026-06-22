@@ -12,6 +12,8 @@ import {
   chefRejectOrder,
   fetchChefOrders,
 } from '../services/order_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import ChefOfflineBanner from '../../gestion_cocinero/components/ChefOfflineBanner'
 
 const actionLabels = {
   accept: 'Aceptar',
@@ -58,6 +60,7 @@ const PAYMENT_OPTIONS = [
 
 export default function ChefOrdersPage() {
   const navigate = useNavigate()
+  const { isOnline } = useConnectivity()
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
@@ -70,7 +73,7 @@ export default function ChefOrdersPage() {
 
   useEffect(() => {
     load()
-  }, [])
+  }, [isOnline])
 
   async function load() {
     setLoading(true)
@@ -81,7 +84,11 @@ export default function ChefOrdersPage() {
       setOfflineMeta(extractScreenSnapshotMeta(data))
     } catch (error) {
       setOfflineMeta(null)
-      setMessage(error?.response?.data?.detail || 'No se pudieron cargar los pedidos recibidos.')
+      if (!isOnline) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setMessage(error?.response?.data?.detail || 'No se pudieron cargar los pedidos recibidos.')
+      }
     } finally {
       setLoading(false)
     }
@@ -143,6 +150,7 @@ export default function ChefOrdersPage() {
 
   return (
     <section className="space-y-5">
+      <ChefOfflineBanner />
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-4xl font-bold tracking-tight">Pedidos recibidos</h1>
@@ -271,6 +279,11 @@ export default function ChefOrdersPage() {
                   <div>Bs {Number(order.total || 0).toFixed(2)}</div>
                   <div>
                     <Badge tone={statusTone(order.status)}>{labelForStatus(order.status)}</Badge>
+                    {order.synced === false && (
+                      <span className="block text-[10px] font-bold px-2 py-0.5 mt-1 rounded bg-amber-500/20 text-amber-600 border border-amber-500/30 text-center">
+                        Pendiente de sincronizar
+                      </span>
+                    )}
                   </div>
                   <div>
                     <Badge tone={paymentTone(order.payment?.status)}>{labelForPaymentStatus(order.payment?.status)}</Badge>
@@ -307,6 +320,11 @@ export default function ChefOrdersPage() {
                     <div className="flex flex-wrap gap-2">
                       <Badge tone={statusTone(order.status)}>{labelForStatus(order.status)}</Badge>
                       <Badge tone={paymentTone(order.payment?.status)}>{labelForPaymentStatus(order.payment?.status)}</Badge>
+                      {order.synced === false && (
+                        <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 border border-amber-500/30">
+                          Pendiente de sincronizar
+                        </span>
+                      )}
                     </div>
                   </div>
 

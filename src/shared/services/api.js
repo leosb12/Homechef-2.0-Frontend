@@ -1,4 +1,5 @@
-﻿import axios from 'axios'
+import axios from 'axios'
+import { supabase } from './supabase_client'
 
 export const API_URL = import.meta.env.VITE_API_URL || 'https://homechef-2-0-backend.onrender.com/api/v1'
 
@@ -12,8 +13,22 @@ const DEFAULT_CACHE_TTL = 5 * 60 * 1000
 
 clearCacheOnBrowserReload()
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('homechef_access_token')
+api.interceptors.request.use(async (config) => {
+  let token = null
+  try {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.access_token) {
+      token = session.access_token
+      localStorage.setItem('homechef_access_token', token)
+    }
+  } catch (err) {
+    // Silently ignore if supabase fails to load session
+  }
+  
+  if (!token) {
+    token = localStorage.getItem('homechef_access_token')
+  }
+
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
@@ -22,12 +37,50 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error?.response?.status
-    if ((status === 401 || status === 403) && typeof window !== 'undefined') {
-      localStorage.removeItem('homechef_access_token')
-      localStorage.removeItem('homechef_role')
-      localStorage.removeItem('homechef_user')
+    const url = error?.config?.url || ''
+    const config = error?.config
+    const token = typeof window !== 'undefined' ? localStorage.getItem('homechef_access_token') : null
+
+    // Intento de refresh token automático si es 401 y no es un reintento
+    if (status === 401 && config && !config._retry) {
+      config._retry = true
+      try {
+        console.log('[api] Detectado error 401. Intentando renovar sesión de Supabase Auth...')
+        const { data: { session }, error: refreshErr } = await supabase.auth.getSession()
+        if (!refreshErr && session?.access_token) {
+          const freshToken = session.access_token
+          localStorage.setItem('homechef_access_token', freshToken)
+          config.headers.Authorization = `Bearer ${freshToken}`
+          console.log('[api] Sesión renovada con éxito. Reintentando llamada original.')
+          return api(config)
+        }
+      } catch (err) {
+        console.error('[api] Error al intentar renovar sesión en interceptor:', err)
+      }
+    }
+
+    // Solo cerrar sesión si es 401 (no autenticado/expirado) o si es un 403 en el endpoint de validación de sesión
+    const isAuthFailure = status === 401 || (status === 403 && url.includes('/auth/session/'))
+
+    if (isAuthFailure && typeof window !== 'undefined') {
+      if (token === 'offline_placeholder_token') {
+        console.warn('[api] Petición rechazada con error de autenticación en modo offline-authenticated. Ignorando logout.')
+        return Promise.reject(error)
+      }
+
+      console.warn(`[api] Sesión invalidada por error ${status} en ${url}. Cerrando sesión.`)
+      try {
+        const { useAuthSession } = await import('../../modules/gestion_usuarios_acceso_suscripcion/services/auth_session')
+        useAuthSession.getState().clearSession()
+      } catch {
+        localStorage.removeItem('homechef_access_token')
+        localStorage.removeItem('homechef_role')
+        localStorage.removeItem('homechef_user')
+        localStorage.removeItem('homechef_offline_session')
+      }
+
       invalidateApiCache()
 
       if (shouldRedirectToLogin(window.location.pathname)) {

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import LastLoadedNotice from '../../../shared/components/LastLoadedNotice'
-import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache'
+import { extractScreenSnapshotMeta, readScreenSnapshot } from '../../../shared/services/screen_cache'
 import CheckoutDeliveryMap from '../components/CheckoutDeliveryMap'
 import { fetchCart } from '../services/cart_service'
 import {
@@ -9,6 +9,9 @@ import {
   previewCheckout,
   previewCheckoutRoute,
 } from '../services/checkout_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import { useAuthSession } from '../../gestion_usuarios_acceso_suscripcion/services/auth_session'
+import { getMetadata, setMetadata } from '../../../shared/services/offline_db'
 
 const emptyAddress = {
   label: '',
@@ -36,6 +39,16 @@ export default function ClientCheckoutPage() {
   const [message, setMessage] = useState('')
   const [offlineMeta, setOfflineMeta] = useState(null)
   const [success, setSuccess] = useState(null)
+  const [validationError, setValidationError] = useState('')
+  
+  const { isOnline } = useConnectivity()
+  const user = useAuthSession((state) => state.user)
+  const userId = user?.id || 'guest'
+  const ADDRESSES_CACHE_KEY = useMemo(() => `client_addresses:${userId}`, [userId])
+  const [addresses, setAddresses] = useState([])
+  const [selectedSavedAddressId, setSelectedSavedAddressId] = useState('')
+  const [editingAddressId, setEditingAddressId] = useState('')
+  const [addrForm, setAddrForm] = useState(emptyAddress)
   const [form, setForm] = useState({
     fulfillment_type: 'pickup',
     payment_method: 'cash',
@@ -46,7 +59,7 @@ export default function ClientCheckoutPage() {
 
   useEffect(() => {
     void loadCartAndPreview()
-  }, [cartId])
+  }, [cartId, isOnline])
 
   useEffect(() => {
     if (form.fulfillment_type !== 'delivery') return
@@ -76,11 +89,26 @@ export default function ClientCheckoutPage() {
   async function loadCartAndPreview() {
     setLoading(true)
     setMessage('')
+    setValidationError('')
     try {
+      const cachedCart = await readScreenSnapshot('mod5.cart')
       const cartData = await fetchCart()
       const targetCart =
         (cartData.carts || []).find((entry) => entry.id === cartId) || null
       setCart(targetCart)
+
+      if (!isOnline && (!cartData || !cartData.carts || cartData.carts.length === 0)) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else if (!cartData?.__offline && cachedCart && (cachedCart.__offline || cachedCart.carts?.some(c => c.items?.some(i => i.id?.startsWith('temp-'))))) {
+        const changed = detectCartChanges(cachedCart, cartData)
+        if (changed) {
+          setValidationError('Algunos productos cambiaron desde tu última sincronización. Revisa tu carrito antes de continuar.')
+          setCart(null)
+          setPreview(null)
+          return
+        }
+      }
+
       if (targetCart) {
         const initialPreview = await previewCheckout(buildPayload(targetCart.id, form))
         setPreview(initialPreview)
@@ -91,7 +119,11 @@ export default function ClientCheckoutPage() {
       }
     } catch (error) {
       setOfflineMeta(null)
-      setMessage(error?.response?.data?.detail || 'No se pudo cargar el checkout.')
+      if (!isOnline) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setMessage(error?.response?.data?.detail || 'No se pudo cargar el checkout.')
+      }
     } finally {
       setLoading(false)
     }
@@ -156,6 +188,110 @@ export default function ClientCheckoutPage() {
         longitude: String(point.longitude),
       },
     }))
+    setAddrForm((current) => ({
+      ...current,
+      latitude: String(point.latitude),
+      longitude: String(point.longitude),
+    }))
+  }
+
+  useEffect(() => {
+    void loadLocalAddresses()
+  }, [userId])
+
+  async function loadLocalAddresses() {
+    try {
+      const data = await getMetadata(ADDRESSES_CACHE_KEY)
+      const list = Array.isArray(data) ? data : []
+      setAddresses(list)
+      const principal = list.find((addr) => addr.is_principal)
+      if (principal) {
+        setSelectedSavedAddressId(principal.id)
+        setForm((current) => ({
+          ...current,
+          address: {
+            ...emptyAddress,
+            ...principal
+          }
+        }))
+        setPreviewStale(true)
+      }
+    } catch (err) {
+      console.error('Error loading addresses:', err)
+    }
+  }
+
+  async function handleSaveAddress() {
+    if (!addrForm.line_1 || !addrForm.label) {
+      setMessage('El nombre de dirección y la calle son obligatorios.')
+      return
+    }
+    const list = [...addresses]
+    const nextAddr = {
+      ...addrForm,
+      id: editingAddressId || `addr-${crypto.randomUUID()}`,
+      latitude: addrForm.latitude || form.address.latitude || '',
+      longitude: addrForm.longitude || form.address.longitude || ''
+    }
+
+    if (editingAddressId) {
+      const idx = list.findIndex(a => a.id === editingAddressId)
+      if (idx >= 0) list[idx] = nextAddr
+    } else {
+      if (list.length === 0) {
+        nextAddr.is_principal = true
+      }
+      list.push(nextAddr)
+    }
+
+    await setMetadata(ADDRESSES_CACHE_KEY, list)
+    setAddresses(list)
+    handleSelectSavedAddress(nextAddr)
+    resetAddrForm()
+  }
+
+  async function handleDeleteAddress(id) {
+    const list = addresses.filter(a => a.id !== id)
+    if (addresses.find(a => a.id === id)?.is_principal && list.length > 0) {
+      list[0].is_principal = true
+    }
+    await setMetadata(ADDRESSES_CACHE_KEY, list)
+    setAddresses(list)
+    if (selectedSavedAddressId === id) {
+      setSelectedSavedAddressId('')
+      setForm((current) => ({ ...current, address: emptyAddress }))
+    }
+  }
+
+  async function handleSetPrincipalAddress(id) {
+    const list = addresses.map(a => ({
+      ...a,
+      is_principal: a.id === id
+    }))
+    await setMetadata(ADDRESSES_CACHE_KEY, list)
+    setAddresses(list)
+  }
+
+  function handleSelectSavedAddress(addr) {
+    setSelectedSavedAddressId(addr.id)
+    setForm((current) => ({
+      ...current,
+      address: {
+        ...emptyAddress,
+        ...addr
+      }
+    }))
+    setPreviewStale(true)
+  }
+
+  function handleStartEditAddress(addr) {
+    setEditingAddressId(addr.id)
+    setAddrForm(addr)
+  }
+
+  function resetAddrForm() {
+    setEditingAddressId('')
+    setAddrForm(emptyAddress)
   }
 
   async function useCurrentLocation({ silent = false } = {}) {
@@ -422,6 +558,132 @@ export default function ClientCheckoutPage() {
 
           {form.fulfillment_type === 'delivery' ? (
             <div className="space-y-4">
+              {/* Gestor de Direcciones Locales */}
+              <div className="rounded-xl border p-4 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
+                <h3 className="text-base font-bold">Mis direcciones guardadas</h3>
+                {addresses.length === 0 ? (
+                  <p className="text-xs" style={{ color: 'var(--muted)' }}>No tienes direcciones guardadas localmente.</p>
+                ) : (
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {addresses.map((addr) => (
+                      <div
+                        key={addr.id}
+                        onClick={() => handleSelectSavedAddress(addr)}
+                        className="cursor-pointer rounded-xl border p-3 flex flex-col justify-between transition hover:border-brand"
+                        style={{
+                          borderColor: selectedSavedAddressId === addr.id ? 'var(--brand)' : 'var(--line)',
+                          backgroundColor: 'var(--panel)',
+                        }}
+                      >
+                        <div>
+                          <div className="flex items-center gap-1.5 justify-between">
+                            <span className="font-bold text-sm">{addr.label || 'Dirección'}</span>
+                            {addr.is_principal && (
+                              <span className="text-[10px] px-2 py-0.5 rounded-full text-white bg-indigo-600 font-bold">
+                                Principal
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs mt-1" style={{ color: 'var(--muted)' }}>
+                            {addr.line_1}
+                          </p>
+                          <p className="text-xs" style={{ color: 'var(--muted)' }}>
+                            {addr.contact_name} · {addr.contact_phone}
+                          </p>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-2 pt-2 border-t text-xs" style={{ borderColor: 'var(--line)' }}>
+                          {!addr.is_principal && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                handleSetPrincipalAddress(addr.id)
+                              }}
+                              className="text-xs font-semibold text-indigo-500 hover:underline"
+                            >
+                              Principal
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleStartEditAddress(addr)
+                            }}
+                            className="text-xs font-semibold text-slate-500 hover:underline"
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleDeleteAddress(addr.id)
+                            }}
+                            className="text-xs font-semibold text-red-500 hover:underline"
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="border-t pt-3" style={{ borderColor: 'var(--line)' }}>
+                  <h4 className="font-bold text-xs mb-2">
+                    {editingAddressId ? 'Editar dirección local' : 'Guardar nueva dirección local'}
+                  </h4>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    <Field
+                      label="Etiqueta (ej: Casa, Trabajo)"
+                      value={addrForm.label}
+                      onChange={(val) => setAddrForm(c => ({ ...c, label: val }))}
+                    />
+                    <Field
+                      label="Nombre de contacto"
+                      value={addrForm.contact_name}
+                      onChange={(val) => setAddrForm(c => ({ ...c, contact_name: val }))}
+                    />
+                    <Field
+                      label="Teléfono de contacto"
+                      value={addrForm.contact_phone}
+                      onChange={(val) => setAddrForm(c => ({ ...c, contact_phone: val }))}
+                    />
+                    <Field
+                      label="Dirección (Calle, Nro)"
+                      value={addrForm.line_1}
+                      onChange={(val) => setAddrForm(c => ({ ...c, line_1: val }))}
+                    />
+                    <Field
+                      label="Referencia"
+                      value={addrForm.reference}
+                      onChange={(val) => setAddrForm(c => ({ ...c, reference: val }))}
+                    />
+                  </div>
+                  <div className="flex gap-2 mt-3 justify-end">
+                    {editingAddressId && (
+                      <button
+                        type="button"
+                        onClick={resetAddrForm}
+                        className="px-3 py-1.5 border rounded-lg text-xs"
+                        style={{ borderColor: 'var(--line)' }}
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleSaveAddress}
+                      className="px-4 py-1.5 rounded-lg text-xs text-white font-bold"
+                      style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
+                    >
+                      {editingAddressId ? 'Guardar cambios' : 'Guardar dirección'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               <div className="grid gap-3 md:grid-cols-2">
                 <Field
                   label="Etiqueta"
@@ -626,11 +888,23 @@ export default function ClientCheckoutPage() {
             />
           </div>
 
+          {validationError && (
+            <div className="rounded-xl border p-4 text-sm font-semibold mb-2" style={{ borderColor: 'rgba(239, 68, 68, 0.25)', backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#f87171' }}>
+              {validationError}
+            </div>
+          )}
+
+          {!isOnline && (
+            <div className="rounded-xl border p-4 text-sm font-semibold mb-2" style={{ borderColor: 'rgba(239, 68, 68, 0.25)', backgroundColor: 'rgba(239, 68, 68, 0.05)', color: '#f87171' }}>
+              El pago requiere conexión. Tu carrito se guardó localmente para continuar luego.
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button
               type="button"
               onClick={refreshPreview}
-              disabled={previewLoading}
+              disabled={previewLoading || !isOnline || !!validationError}
               className="rounded-lg border px-4 py-2 disabled:opacity-50"
               style={{ borderColor: 'var(--line)' }}
             >
@@ -639,7 +913,7 @@ export default function ClientCheckoutPage() {
             <button
               type="button"
               onClick={handleConfirm}
-              disabled={confirming || !preview}
+              disabled={confirming || !preview || !isOnline || !!validationError}
               className="rounded-lg px-4 py-2 text-white disabled:opacity-50"
               style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
             >
@@ -779,4 +1053,21 @@ function cancelRedirectForPaymentMethod(paymentMethod) {
     return import.meta.env.VITE_ORDER_COINGATE_CANCEL_REDIRECT_TO || ''
   }
   return ''
+}
+
+function detectCartChanges(cached, fresh) {
+  if (!cached || !fresh) return false
+  const cachedCarts = cached.carts || []
+  const freshCarts = fresh.carts || []
+
+  for (const cCart of cachedCarts) {
+    const fCart = freshCarts.find(fc => String(fc.chef?.id) === String(cCart.chef?.id))
+    for (const cItem of (cCart.items || [])) {
+      const fItem = fCart?.items?.find(fi => String(fi.dish_id) === String(cItem.dish_id))
+      if (!fItem) return true
+      if (Number(fItem.unit_price) !== Number(cItem.unit_price)) return true
+      if (fItem.available_portions < fItem.quantity || fItem.available_portions < cItem.quantity) return true
+    }
+  }
+  return false
 }

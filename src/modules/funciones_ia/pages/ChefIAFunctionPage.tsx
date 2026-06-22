@@ -11,6 +11,7 @@ import AsistenteIaPage from '../submodules/asistente_ia/pages/AsistenteIaPage';
 import VisionArtificialPage from '../submodules/vision_artificial/pages/VisionArtificialPage';
 import DemandaPreciosPage from '../submodules/demanda_precios/pages/DemandaPreciosPage';
 import PublicacionPlatosPage from '../submodules/publicacion_platos/pages/PublicacionPlatosPage';
+import ChefOfflineBanner from '../../gestion_cocinero/components/ChefOfflineBanner';
 
 const SLUG_TO_CODE: Record<string, string> = {
   assistant: 'asistente_ia',
@@ -123,28 +124,34 @@ export default function ChefIAFunctionPage() {
   }
 
   // Render specific submodule screen if authorized
-  if (functionCode === 'asistente_ia') {
-    return <AsistenteIaPage />;
-  }
-  if (functionCode === 'vision_artificial') {
-    return <VisionArtificialPage />;
-  }
-  if (functionCode === 'demanda_precios') {
-    return <DemandaPreciosPage />;
-  }
-  if (functionCode === 'publicacion_platos') {
-    return <PublicacionPlatosPage />;
-  }
-
-  return (
-    <section className="space-y-4">
+  const renderSubmodule = () => {
+    if (functionCode === 'asistente_ia') {
+      return <AsistenteIaPage />;
+    }
+    if (functionCode === 'vision_artificial') {
+      return <VisionArtificialPage />;
+    }
+    if (functionCode === 'demanda_precios') {
+      return <DemandaPreciosPage />;
+    }
+    if (functionCode === 'publicacion_platos') {
+      return <PublicacionPlatosPage />;
+    }
+    return (
       <div className="rounded-xl border p-6 space-y-3" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
-        <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--brand-2)' }}>Acceso autorizado</p>
+        <p className="text-sm font-semibold uppercase tracking-wide" style={{ color: 'var(--brand-2)' }}>Acceso authorized</p>
         <h1 className="text-3xl font-bold">{iaFunction?.title || 'Función IA'}</h1>
         <p style={{ color: 'var(--muted)' }}>
           Esta función IA fue autorizada por el backend, pero el componente de interfaz no fue localizado.
         </p>
       </div>
+    );
+  };
+
+  return (
+    <section className="space-y-4">
+      <ChefOfflineBanner />
+      {renderSubmodule()}
     </section>
   );
 }

@@ -8,10 +8,12 @@ import {
   fetchFavorites,
   removeFavorite,
 } from '../services/public_dashboard_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
 
 export default function DishDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { isOnline } = useConnectivity()
   const [detail, setDetail] = useState(null)
   const [error, setError] = useState('')
   const [quantity, setQuantity] = useState(1)
@@ -45,7 +47,11 @@ export default function DishDetailPage() {
           ),
         )
       } catch (e) {
-        setError(e?.response?.data?.detail || 'Error al cargar detalle.')
+        if (!isOnline) {
+          setError('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+        } else {
+          setError(e?.response?.data?.detail || 'Error al cargar detalle.')
+        }
       }
     }
     load()

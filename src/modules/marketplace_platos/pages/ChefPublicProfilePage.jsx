@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { addFavorite, createChefReview, fetchChefPublicProfile, fetchFavorites, removeFavorite } from '../services/public_dashboard_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
 
 export default function ChefPublicProfilePage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { isOnline } = useConnectivity()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -31,7 +33,11 @@ export default function ChefPublicProfilePage() {
         navigate('/login')
         return
       }
-      setError(err?.response?.data?.detail || 'No se pudo cargar el perfil del cocinero.')
+      if (!isOnline) {
+        setError('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setError(err?.response?.data?.detail || 'No se pudo cargar el perfil del cocinero.')
+      }
     } finally {
       setLoading(false)
     }

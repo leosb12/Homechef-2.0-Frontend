@@ -6,25 +6,27 @@ import {
   saveLocalUpsert,
 } from '../../../shared/services/offline_helpers'
 import { getLocalEntities } from '../../../shared/services/offline_db'
+import { readWithScreenCache } from '../../../shared/services/screen_cache'
 
 export async function fetchPublicDashboard() {
-  return cachedGet('/marketplace/public-dashboard/')
+  return readWithScreenCache('marketplace.public-dashboard', () => cachedGet('/marketplace/public-dashboard/'))
 }
 
 export async function fetchClientExplore(params = {}) {
-  return cachedGet('/marketplace/client/explore/', { params })
+  const cacheKey = `marketplace.explore:${JSON.stringify(params)}`
+  return readWithScreenCache(cacheKey, () => cachedGet('/marketplace/client/explore/', { params }))
 }
 
 export async function fetchDishDetail(dishId) {
-  return cachedGet(`/marketplace/client/dishes/${dishId}/detail/`)
+  return readWithScreenCache(`marketplace.dish.${dishId}`, () => cachedGet(`/marketplace/client/dishes/${dishId}/detail/`))
 }
 
 export async function fetchChefPublicProfile(chefId) {
-  return cachedGet(`/marketplace/client/chefs/${chefId}/profile/`)
+  return readWithScreenCache(`marketplace.chefProfile.${chefId}`, () => cachedGet(`/marketplace/client/chefs/${chefId}/profile/`))
 }
 
 export async function fetchChefReputation(chefId) {
-  return cachedGet(`/marketplace/client/chefs/${chefId}/reputation/`)
+  return readWithScreenCache(`marketplace.chefReputation.${chefId}`, () => cachedGet(`/marketplace/client/chefs/${chefId}/reputation/`))
 }
 
 export async function createChefReview(chefId, payload) {
@@ -33,7 +35,13 @@ export async function createChefReview(chefId, payload) {
     'reviews',
     'CREATE',
     { ...payload, chef_id: chefId, review_type: 'chef' },
-    { local_id: localId, server_id: null, version: payload.version },
+    {
+      local_id: localId,
+      server_id: null,
+      version: payload.version,
+      endpoint: `/marketplace/client/chefs/${chefId}/reviews/`,
+      method: 'POST',
+    },
     async () => {
       const { data } = await api.post(`/marketplace/client/chefs/${chefId}/reviews/`, payload)
       invalidateApiCache(`/marketplace/client/chefs/${chefId}/`)
@@ -50,7 +58,13 @@ export async function createDishReview(dishId, payload) {
     'reviews',
     'CREATE',
     { ...payload, dish_id: dishId },
-    { local_id: localId, server_id: null, version: payload.version },
+    {
+      local_id: localId,
+      server_id: null,
+      version: payload.version,
+      endpoint: `/marketplace/client/dishes/${dishId}/reviews/`,
+      method: 'POST',
+    },
     async () => {
       const { data } = await api.post(`/marketplace/client/dishes/${dishId}/reviews/`, payload)
       invalidateApiCache(`/marketplace/client/dishes/${dishId}/detail/`)
@@ -77,7 +91,7 @@ export async function addFavorite(favorite_type, ref_id) {
     'favorites',
     'CREATE',
     payload,
-    { local_id: localId, server_id: null },
+    { local_id: localId, server_id: null, endpoint: '/marketplace/client/favorites/', method: 'POST' },
     async () => {
       const { data } = await api.post('/marketplace/client/favorites/', payload)
       invalidateFavoriteCache(favorite_type, ref_id)
@@ -93,7 +107,12 @@ export async function removeFavorite(favorite_type, ref_id) {
     'favorites',
     'DELETE',
     { favorite_type, ref_id },
-    { local_id: localId, server_id: localId },
+    {
+      local_id: localId,
+      server_id: localId,
+      endpoint: `/marketplace/client/favorites/${favorite_type}/${ref_id}/`,
+      method: 'DELETE',
+    },
     async () => {
       const { data } = await api.delete(`/marketplace/client/favorites/${favorite_type}/${ref_id}/`)
       invalidateFavoriteCache(favorite_type, ref_id)
@@ -119,7 +138,13 @@ export async function savePreferences(payload) {
     'preferences',
     'UPDATE',
     payload,
-    { local_id: 'preferences-me', server_id: 'me', version: payload.version },
+    {
+      local_id: 'preferences-me',
+      server_id: 'me',
+      version: payload.version,
+      endpoint: '/marketplace/client/preferences/',
+      method: 'PUT',
+    },
     async () => {
       const { data } = await api.put('/marketplace/client/preferences/', payload)
       invalidateApiCache('/marketplace/client/preferences/')

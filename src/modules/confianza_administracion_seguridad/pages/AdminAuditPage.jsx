@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import AuditService from '../services/audit_service'
+import OfflineBanner from '../components/OfflineBanner'
 
 const GENERAL_FILTERS = {
   date_from: '',
@@ -14,21 +15,38 @@ const GENERAL_FILTERS = {
 }
 
 const AI_FILTERS = {
-  date_from: '',
-  date_to: '',
-  provider_model: '',
+  collection: '',
+  audit_type: '',
+  from_date: '',
+  to_date: '',
+  provider: '',
+  model: '',
   module: '',
-  user: '',
+  user_id: '',
+  role: '',
   status: '',
   search: '',
 }
+
+const AI_TABS = [
+  { label: 'Todo', collection: '', audit_type: '' },
+  { label: 'Manual / Chatbot', collection: 'user_manual_chatbot_conversations', audit_type: 'Manual / Chatbot' },
+  { label: 'Inferencias IA', collection: 'ai_inference_audit', audit_type: 'Inferencias IA' },
+  { label: 'Requests IA', collection: 'ai_requests', audit_type: 'Requests IA' },
+  { label: 'Modelos', collection: 'ai_model_status', audit_type: 'Estado de Modelos' },
+  { label: 'Pruebas Offline', collection: 'ai_offline_test_results', audit_type: 'Pruebas Offline' },
+  { label: 'Entrenamientos', collection: 'ai_training_reports', audit_type: 'Entrenamientos' },
+  { label: 'Datasets', collection: 'ai_dataset_metadata', audit_type: 'Datasets' },
+  { label: 'Calidad Publicaciones', collection: 'publication_quality_reviews', audit_type: 'Calidad Publicaciones' },
+]
 
 export default function AdminAuditPage() {
   const [mode, setMode] = useState('general')
   const [generalFilters, setGeneralFilters] = useState(GENERAL_FILTERS)
   const [aiFilters, setAiFilters] = useState(AI_FILTERS)
   const [general, setGeneral] = useState({ items: [], pagination: { page: 1, total_pages: 1, total: 0 } })
-  const [ai, setAi] = useState({ items: [], pagination: { page: 1, total_pages: 1, total: 0 }, mongo: {} })
+  const [ai, setAi] = useState({ items: [], pagination: { page: 1, total_pages: 1, total: 0 }, mongo: {}, collections: [] })
+  const [aiCollections, setAiCollections] = useState([])
   const [summary, setSummary] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -37,6 +55,12 @@ export default function AdminAuditPage() {
 
   const activeFilters = mode === 'general' ? generalFilters : aiFilters
   const activePage = mode === 'general' ? general.pagination?.page || 1 : ai.pagination?.page || 1
+
+  const collectionCounts = useMemo(() => {
+    const counts = {}
+    for (const item of aiCollections || []) counts[item.collection] = item.count
+    return counts
+  }, [aiCollections])
 
   useEffect(() => {
     void loadData(1)
@@ -60,13 +84,15 @@ export default function AdminAuditPage() {
         setGeneral(listPayload)
         setSummary(summaryPayload)
       } else {
-        const params = { ...aiFilters, page, page_size: 25 }
-        const [listPayload, summaryPayload] = await Promise.all([
+        const params = { ...aiFilters, page, page_size: 25, limit: 25 }
+        const [listPayload, summaryPayload, collectionsPayload] = await Promise.all([
           AuditService.getAI(params),
           AuditService.getAISummary(aiFilters),
+          AuditService.getAICollections(),
         ])
         setAi(listPayload)
         setSummary(summaryPayload)
+        setAiCollections(collectionsPayload.items || listPayload.collections || summaryPayload.collections || [])
       }
     } catch (err) {
       setError(err?.response?.data?.detail || err?.message || 'No se pudo cargar auditoria.')
@@ -100,12 +126,23 @@ export default function AdminAuditPage() {
     }
   }
 
+  function selectAICollection(tab) {
+    setAiFilters((prev) => ({
+      ...prev,
+      collection: tab.collection,
+      audit_type: tab.audit_type,
+    }))
+  }
+
   const currentRows = mode === 'general' ? general.items || [] : ai.items || []
   const pagination = mode === 'general' ? general.pagination || {} : ai.pagination || {}
-  const mongoWarning = mode === 'ai' && ai.mongo && ai.mongo.available === false ? ai.mongo.error : ''
+  const mongoWarning = mode === 'ai' && ai.mongo && ai.mongo.available === false
+    ? ai.mongo.error || 'MongoDB Atlas no esta configurado para auditoria IA. Revisa MONGODB_URI.'
+    : ''
 
   return (
     <section className="space-y-6">
+      <OfflineBanner moduleName={mode === 'general' ? 'audit_general' : 'audit_ai'} />
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <h1 className="text-4xl font-extrabold tracking-tight">{'Auditor\u00eda'}</h1>
@@ -128,10 +165,19 @@ export default function AdminAuditPage() {
         <TabButton active={mode === 'ai'} onClick={() => setMode('ai')}>Auditoria Uso de IA</TabButton>
       </div>
 
+      {mode === 'ai' && (
+        <AICollectionTabs
+          activeCollection={aiFilters.collection}
+          counts={collectionCounts}
+          total={summary.total_ai_queries}
+          onSelect={selectAICollection}
+        />
+      )}
+
       <SummaryCards mode={mode} summary={summary} loading={loading} />
 
       {error && <Alert tone="red">{error}</Alert>}
-      {mongoWarning && <Alert tone="amber">MongoDB no esta disponible para auditoria IA: {mongoWarning}</Alert>}
+      {mongoWarning && <Alert tone="amber">{mongoWarning}</Alert>}
 
       {mode === 'general' ? (
         <GeneralFilters filters={generalFilters} onChange={setGeneralFilters} />
@@ -144,7 +190,7 @@ export default function AdminAuditPage() {
           {mode === 'general' ? (
             <GeneralTable rows={currentRows} loading={loading} onDetail={openDetail} />
           ) : (
-            <AITable rows={currentRows} loading={loading} onDetail={openDetail} />
+            <AITable rows={currentRows} loading={loading} onDetail={openDetail} activeCollection={aiFilters.collection} />
           )}
         </div>
         <Pagination pagination={pagination} loading={loading} onPage={(page) => loadData(page)} />
@@ -159,6 +205,33 @@ export default function AdminAuditPage() {
         />
       )}
     </section>
+  )
+}
+
+function AICollectionTabs({ activeCollection, counts, total, onSelect }) {
+  return (
+    <div className="flex flex-wrap gap-2 rounded-[22px] border p-3" style={{ borderColor: 'rgba(148,163,184,.18)', backgroundColor: 'var(--panel)' }}>
+      {AI_TABS.map((tab) => {
+        const active = activeCollection === tab.collection
+        const count = tab.collection ? counts[tab.collection] : total
+        return (
+          <button
+            key={tab.label}
+            type="button"
+            onClick={() => onSelect(tab)}
+            className="rounded-xl border px-3 py-2 text-sm font-bold transition"
+            style={{
+              borderColor: active ? 'rgba(124,58,237,.45)' : 'rgba(148,163,184,.22)',
+              backgroundColor: active ? '#ede9fe' : 'white',
+              color: active ? '#6d28d9' : 'var(--text)',
+            }}
+          >
+            {tab.label}
+            {count !== undefined && count !== null ? <span className="ml-2 text-xs opacity-70">{count}</span> : null}
+          </button>
+        )
+      })}
+    </div>
   )
 }
 
@@ -201,7 +274,7 @@ function SummaryCards({ mode, summary, loading }) {
         <div key={label} className="rounded-[20px] border p-4" style={{ borderColor: 'rgba(148,163,184,.18)', backgroundColor: 'var(--panel)', boxShadow: '0 10px 30px rgba(15,23,42,.05)' }}>
           <div className="mb-3 h-1.5 w-12 rounded-full" style={{ backgroundColor: index % 2 ? '#f97316' : '#7c3aed' }} />
           <p className="text-xs font-bold uppercase tracking-wide" style={{ color: 'var(--muted)' }}>{label}</p>
-          <p className="mt-1 text-2xl font-extrabold">{loading ? '...' : value ?? 0}</p>
+          <p className="mt-1 text-2xl font-extrabold">{loading && value === undefined ? 'Cargando' : value ?? 0}</p>
         </div>
       ))}
     </div>
@@ -227,13 +300,15 @@ function GeneralFilters({ filters, onChange }) {
 function AIFilters({ filters, onChange }) {
   return (
     <FilterPanel>
-      <DateInput label="Desde" value={filters.date_from} onChange={(date_from) => onChange((prev) => ({ ...prev, date_from }))} />
-      <DateInput label="Hasta" value={filters.date_to} onChange={(date_to) => onChange((prev) => ({ ...prev, date_to }))} />
-      <TextInput label="Proveedor/modelo" value={filters.provider_model} onChange={(provider_model) => onChange((prev) => ({ ...prev, provider_model }))} placeholder="Groq, Gemini, local..." />
-      <TextInput label="Modulo" value={filters.module} onChange={(module) => onChange((prev) => ({ ...prev, module }))} placeholder="CU-23, chatbot..." />
-      <TextInput label="Usuario" value={filters.user} onChange={(user) => onChange((prev) => ({ ...prev, user }))} placeholder="ID usuario" />
+      <DateInput label="Desde" value={filters.from_date} onChange={(from_date) => onChange((prev) => ({ ...prev, from_date }))} />
+      <DateInput label="Hasta" value={filters.to_date} onChange={(to_date) => onChange((prev) => ({ ...prev, to_date }))} />
+      <TextInput label="Proveedor" value={filters.provider} onChange={(provider) => onChange((prev) => ({ ...prev, provider }))} placeholder="Groq, Gemini, local..." />
+      <TextInput label="Modelo" value={filters.model} onChange={(model) => onChange((prev) => ({ ...prev, model }))} placeholder="llama, gemini..." />
+      <TextInput label="Modulo" value={filters.module} onChange={(module) => onChange((prev) => ({ ...prev, module }))} placeholder="CU-14, chatbot..." />
+      <TextInput label="Usuario" value={filters.user_id} onChange={(user_id) => onChange((prev) => ({ ...prev, user_id }))} placeholder="ID usuario" />
+      <TextInput label="Rol" value={filters.role} onChange={(role) => onChange((prev) => ({ ...prev, role }))} placeholder="cliente, cocinero..." />
       <SelectInput label="Estado" value={filters.status} onChange={(status) => onChange((prev) => ({ ...prev, status }))} options={['success', 'failed']} />
-      <TextInput label="Busqueda" value={filters.search} onChange={(search) => onChange((prev) => ({ ...prev, search }))} placeholder="Prompt, respuesta, error..." wide />
+      <TextInput label="Busqueda" value={filters.search} onChange={(search) => onChange((prev) => ({ ...prev, search }))} placeholder="Mensaje, respuesta, error..." wide />
     </FilterPanel>
   )
 }
@@ -299,18 +374,29 @@ function GeneralTable({ rows, loading, onDetail }) {
   )
 }
 
-function AITable({ rows, loading, onDetail }) {
+function AITable({ rows, loading, onDetail, activeCollection }) {
+  const emptyText = activeCollection ? 'No hay eventos registrados en esta coleccion.' : 'No hay eventos IA con esos filtros.'
   return (
     <table className="min-w-full text-sm">
-      <TableHead columns={['Fecha', 'Usuario', 'Modulo', 'Proveedor/modelo', 'Prompt/resumen', 'Estado', 'Latencia', '']} />
+      <TableHead columns={['Fecha', 'Tipo', 'Usuario', 'Rol', 'Modulo', 'Proveedor/modelo', 'Prompt/Mensaje', 'Respuesta/Resumen', 'Estado', 'Latencia', '']} />
       <tbody>
-        {loading ? <EmptyRow colSpan={8} text="Cargando auditoria IA..." /> : rows.length === 0 ? <EmptyRow colSpan={8} text="No hay eventos IA con esos filtros." /> : rows.map((row) => (
+        {loading ? <EmptyRow colSpan={11} text="Cargando auditoria IA..." /> : rows.length === 0 ? <EmptyRow colSpan={11} text={emptyText} /> : rows.map((row) => (
           <tr key={row.id} className="border-t" style={{ borderColor: 'rgba(148,163,184,.14)' }}>
-            <Cell>{formatDate(row.created_at)}</Cell>
-            <Cell>{row.user_id || '-'}<span className="block text-xs text-gray-400">{row.user_role}</span></Cell>
-            <Cell><Badge>{row.module || row.collection}</Badge></Cell>
-            <Cell>{row.provider || '-'}<span className="block text-xs text-gray-400">{row.model}</span></Cell>
-            <Cell className="max-w-[420px]">{truncate(row.prompt || row.response || '-', 120)}</Cell>
+            <Cell>{formatDate(row.timestamp || row.created_at)}</Cell>
+            <Cell>
+              <Badge>{row.audit_type || row.collection}</Badge>
+              <span className="mt-1 block max-w-[180px] truncate text-xs text-gray-400">{row.source_collection || row.collection}</span>
+            </Cell>
+            <Cell className="max-w-[190px] break-words">{row.user_id || '-'}</Cell>
+            <Cell>{row.role || row.user_role || '-'}</Cell>
+            <Cell className="max-w-[220px]">
+              {row.module || '-'}
+              {row.current_screen ? <span className="block text-xs text-gray-400">{row.current_screen}</span> : null}
+              {row.detected_intent ? <span className="block text-xs text-purple-500">{row.detected_intent}</span> : null}
+            </Cell>
+            <Cell>{row.provider || '-'}<span className="block text-xs text-gray-400">{row.model || '-'}</span></Cell>
+            <Cell className="max-w-[300px]">{truncate(row.prompt || '-', 120)}</Cell>
+            <Cell className="max-w-[320px]">{truncate(row.response || row.error || '-', 130)}</Cell>
             <Cell><StatusBadge value={row.status} /></Cell>
             <Cell>{row.latency_ms ? `${row.latency_ms} ms` : '-'}</Cell>
             <Cell><DetailButton onClick={() => onDetail(row)} /></Cell>
@@ -373,11 +459,11 @@ function Pagination({ pagination, loading, onPage }) {
 function DetailModal({ mode, detail, loading, onClose }) {
   const title = mode === 'general'
     ? `${detail.event_type || 'Evento'} #${detail.id || ''}`
-    : `${detail.module || detail.collection || 'Evento IA'}`
+    : `${detail.audit_type || detail.module || detail.collection || 'Evento IA'}`
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-hidden rounded-[22px] border bg-white shadow-2xl">
+      <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-[22px] border bg-white shadow-2xl">
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div>
             <p className="text-xs font-bold uppercase text-purple-600">Detalle de auditoria</p>
@@ -388,15 +474,16 @@ function DetailModal({ mode, detail, loading, onClose }) {
         <div className="max-h-[72vh] overflow-y-auto p-5">
           {loading ? (
             <p>Cargando detalle...</p>
-          ) : detail.error ? (
+          ) : detail.error && !detail.id ? (
             <Alert tone="red">{detail.error}</Alert>
           ) : (
             <div className="grid gap-4 lg:grid-cols-2">
               <DetailBlock title="Resumen" data={summaryDetail(detail, mode)} />
-              <DetailBlock title={mode === 'general' ? 'Old values' : 'Prompt completo'} data={mode === 'general' ? detail.old_values : detail.prompt} />
+              <DetailBlock title={mode === 'general' ? 'Old values' : 'Prompt / mensaje completo'} data={mode === 'general' ? detail.old_values : detail.prompt} />
               <DetailBlock title={mode === 'general' ? 'New values' : 'Respuesta completa'} data={mode === 'general' ? detail.new_values : detail.response} />
-              <DetailBlock title="Metadata" data={detail.metadata} />
               {mode === 'ai' && detail.error ? <DetailBlock title="Error" data={detail.error} /> : null}
+              <DetailBlock title="Metadata" data={detail.metadata} />
+              {mode === 'ai' ? <DetailBlock title="JSON original" data={detail.original_document} wide /> : null}
             </div>
           )}
         </div>
@@ -405,11 +492,11 @@ function DetailModal({ mode, detail, loading, onClose }) {
   )
 }
 
-function DetailBlock({ title, data }) {
+function DetailBlock({ title, data, wide }) {
   return (
-    <div className="rounded-2xl border p-4" style={{ borderColor: 'rgba(148,163,184,.18)', backgroundColor: 'rgba(248,250,252,.65)' }}>
+    <div className={`rounded-2xl border p-4 ${wide ? 'lg:col-span-2' : ''}`} style={{ borderColor: 'rgba(148,163,184,.18)', backgroundColor: 'rgba(248,250,252,.65)' }}>
       <h3 className="mb-2 text-sm font-extrabold">{title}</h3>
-      <pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed">{formatValue(data)}</pre>
+      <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs leading-relaxed">{formatValue(data)}</pre>
     </div>
   )
 }
@@ -434,14 +521,24 @@ function summaryDetail(detail, mode) {
     }
   }
   return {
-    fecha: detail.created_at,
+    coleccion: detail.source_collection || detail.collection,
+    tipo: detail.audit_type,
+    id: detail.mongo_id,
+    timestamp: detail.timestamp || detail.created_at,
     usuario: detail.user_id,
-    rol: detail.user_role,
+    rol: detail.role || detail.user_role,
     modulo: detail.module,
     proveedor: detail.provider,
     modelo: detail.model,
     estado: detail.status,
     latencia_ms: detail.latency_ms,
+    confidence: detail.confidence,
+    grounded: detail.grounded,
+    offline_ready: detail.offline_ready,
+    fallback_reason: detail.fallback_reason,
+    ruta: detail.current_route,
+    pantalla: detail.current_screen,
+    intent: detail.detected_intent,
     request_id: detail.request_id,
     session_id: detail.session_id,
   }

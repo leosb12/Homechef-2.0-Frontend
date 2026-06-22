@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AdminPlatformService from '../services/admin_platform_service'
+import OfflineBanner from '../components/OfflineBanner'
 
 export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(true)
@@ -58,6 +59,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <OfflineBanner moduleName="fraud_risk" />
       {/* Header */}
       <div>
         <h1 className="text-4xl font-extrabold tracking-tight">Panel de Administrador</h1>

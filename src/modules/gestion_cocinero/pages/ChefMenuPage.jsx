@@ -5,6 +5,8 @@ import {
   saveChefMenu,
 } from "../services/chef_service";
 import LoadingButton from "../components/LoadingButton";
+import { useConnectivity } from "../../../shared/hooks/useConnectivity";
+import ChefOfflineBanner from "../components/ChefOfflineBanner";
 
 const ITEM_STATUS_OPTIONS = [
   { value: "available", label: "Disponible" },
@@ -25,6 +27,7 @@ function normalizeItem(item) {
 }
 
 export default function ChefMenuPage() {
+  const { isOnline } = useConnectivity();
   const [dishes, setDishes] = useState([]);
   const [search, setSearch] = useState("");
   const [menuItems, setMenuItems] = useState([]);
@@ -34,6 +37,7 @@ export default function ChefMenuPage() {
   const [message, setMessage] = useState("");
   const [isError, setIsError] = useState(false);
   const [loadingAction, setLoadingAction] = useState("");
+  const [isMenuSynced, setIsMenuSynced] = useState(true);
 
   const setNotice = (text, error = false) => {
     setIsError(error);
@@ -52,13 +56,18 @@ export default function ChefMenuPage() {
       setMenuItems(items);
       setSchedule(menuData.schedule || "");
       setIsActive(menuData.is_active ?? true);
+      setIsMenuSynced(menuData.synced !== false);
       if (items.length) setSelectedDishId(items[0].dish_id);
       if (!keepMessage) setNotice("");
     } catch (err) {
-      setNotice(
-        err?.response?.data?.detail || "No se pudo cargar menu del dia.",
-        true,
-      );
+      if (!isOnline) {
+        setNotice("No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.", true);
+      } else {
+        setNotice(
+          err?.response?.data?.detail || "No se pudo cargar menu del dia.",
+          true,
+        );
+      }
     }
   };
 
@@ -170,9 +179,17 @@ export default function ChefMenuPage() {
 
   return (
     <section className="space-y-4">
+      <ChefOfflineBanner />
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Menu del dia</h1>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            Menu del dia
+            {!isMenuSynced && (
+              <span className="inline-block text-[10px] font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-600 border border-amber-500/30">
+                Pendiente de sincronizar
+              </span>
+            )}
+          </h1>
           <p style={{ color: "var(--muted)" }}>
             Organiza los platos activos de la jornada, porciones y
             disponibilidad.

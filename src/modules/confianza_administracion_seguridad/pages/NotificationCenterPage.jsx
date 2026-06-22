@@ -4,8 +4,12 @@ import {
   markAllOperationalNotificationsRead,
   markOperationalNotificationRead,
 } from '../services/notification_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import ChefOfflineBanner from '../../gestion_cocinero/components/ChefOfflineBanner'
+import RiderOfflineBanner from '../../delivery_rider/components/RiderOfflineBanner'
 
 export default function NotificationCenterPage({ viewerRole = 'client' }) {
+  const { isOnline } = useConnectivity()
   const [items, setItems] = useState([])
   const [summary, setSummary] = useState({ total_count: 0, unread_count: 0 })
   const [loading, setLoading] = useState(true)
@@ -18,7 +22,7 @@ export default function NotificationCenterPage({ viewerRole = 'client' }) {
 
   useEffect(() => {
     void load()
-  }, [])
+  }, [isOnline])
 
   async function load() {
     setLoading(true)
@@ -28,7 +32,11 @@ export default function NotificationCenterPage({ viewerRole = 'client' }) {
       setItems(data.items || [])
       setSummary(data.summary || { total_count: 0, unread_count: 0 })
     } catch (error) {
-      setMessage(error?.response?.data?.detail || 'No se pudieron cargar las notificaciones.')
+      if (!isOnline) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setMessage(error?.response?.data?.detail || 'No se pudieron cargar las notificaciones.')
+      }
     } finally {
       setLoading(false)
     }
@@ -62,6 +70,8 @@ export default function NotificationCenterPage({ viewerRole = 'client' }) {
 
   return (
     <section className="space-y-4">
+      {viewerRole === 'chef' && <ChefOfflineBanner />}
+      {viewerRole === 'rider' && <RiderOfflineBanner />}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold">{title}</h1>

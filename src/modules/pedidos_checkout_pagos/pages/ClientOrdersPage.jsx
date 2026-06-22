@@ -6,6 +6,8 @@ import { extractScreenSnapshotMeta } from '../../../shared/services/screen_cache
 import ReceiptActions from '../components/ReceiptActions'
 import RepeatOrderSummaryModal from '../components/RepeatOrderSummaryModal'
 import { cancelMyOrder, fetchMyOrders, repeatMyOrder } from '../services/order_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import { getPendingOperations } from '../../../shared/services/offline_queue'
 
 const ORDER_STATUS_OPTIONS = [
   { value: 'ALL', label: 'Todos' },
@@ -34,7 +36,9 @@ const FULFILLMENT_OPTIONS = [
 
 export default function ClientOrdersPage() {
   const navigate = useNavigate()
+  const { isOnline } = useConnectivity()
   const [items, setItems] = useState([])
+  const [pendingOps, setPendingOps] = useState([])
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
   const [offlineMeta, setOfflineMeta] = useState(null)
@@ -49,7 +53,7 @@ export default function ClientOrdersPage() {
 
   useEffect(() => {
     load()
-  }, [])
+  }, [isOnline])
 
   async function load() {
     setLoading(true)
@@ -58,9 +62,15 @@ export default function ClientOrdersPage() {
       const data = await fetchMyOrders()
       setItems(data.items || [])
       setOfflineMeta(extractScreenSnapshotMeta(data))
+      const ops = await getPendingOperations()
+      setPendingOps(ops || [])
     } catch (error) {
       setOfflineMeta(null)
-      setMessage(error?.response?.data?.detail || 'No se pudieron cargar tus pedidos.')
+      if (!isOnline) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setMessage(error?.response?.data?.detail || 'No se pudieron cargar tus pedidos.')
+      }
     } finally {
       setLoading(false)
     }
@@ -247,6 +257,9 @@ export default function ClientOrdersPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
+                  {pendingOps.some(op => op.entity === 'client_orders' && String(op.local_id || op.payload?.order_id) === String(order.id)) && (
+                    <StatusBadge label="Pendiente de sincronizar" tone="orange" icon={<ClockIcon />} />
+                  )}
                   <StatusBadge label={`Estado: ${labelForStatus(order.status)}`} tone={statusTone(order.status)} icon={<CheckCircleIcon />} />
                   <StatusBadge label={`Pago: ${labelForPaymentStatus(order.payment?.status)}`} tone={paymentTone(order.payment?.status)} icon={<CardIcon />} />
                 </div>

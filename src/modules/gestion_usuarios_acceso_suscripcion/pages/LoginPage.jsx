@@ -4,27 +4,116 @@ import { Link, useNavigate } from 'react-router-dom'
 import { loginUser } from '../services/auth_service'
 import { useAuthSession } from '../services/auth_session'
 import { useThemeSession } from '../../../shared/services/theme_session'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import { getLastValidSession, hasValidOfflineSession } from '../../../shared/services/offlineSessionService'
+import { logDebug } from '../../../shared/services/debug_logger'
+
+const ROLE_REDIRECTS = {
+  CLIENTE: '/client/explore',
+  COCINERO: '/chef/dashboard',
+  ADMINISTRADOR: '/admin/dashboard',
+  REPARTIDOR: '/delivery/assigned',
+}
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const setSession = useAuthSession((state) => state.setSession)
   const accessToken = useAuthSession((state) => state.accessToken)
   const role = useAuthSession((state) => state.role)
+  const authStatus = useAuthSession((state) => state.authStatus)
   const theme = useThemeSession((state) => state.theme)
   const toggleTheme = useThemeSession((state) => state.toggleTheme)
   const isDark = theme === 'dark'
 
+  const { isOnline } = useConnectivity()
+  const [hasOffline, setHasOffline] = useState(false)
+  const [offlineSessionData, setOfflineSessionData] = useState(null)
+  const [offlineExpiredMsg, setOfflineExpiredMsg] = useState('')
+  const [offlineSubmitting, setOfflineSubmitting] = useState(false)
+
   useEffect(() => {
-    if (accessToken && role) {
-      const redirects = {
-        CLIENTE: '/client/explore',
-        COCINERO: '/chef/dashboard',
-        ADMINISTRADOR: '/admin/dashboard',
-        REPARTIDOR: '/delivery/assigned',
+    async function checkOfflineSession() {
+      const valid = await hasValidOfflineSession()
+      setHasOffline(valid)
+      if (valid) {
+        const session = await getLastValidSession()
+        setOfflineSessionData(session)
+      } else {
+        const session = await getLastValidSession()
+        if (session && session.offline_enabled) {
+          const expires = new Date(session.expires_at)
+          if (expires <= new Date()) {
+            setOfflineExpiredMsg('Tu sesión offline expiró. Conéctate a internet para iniciar sesión nuevamente.')
+            const { clearOfflineSession } = await import('../../../shared/services/offlineSessionService')
+            await clearOfflineSession()
+          }
+        }
       }
-      navigate(redirects[role] || '/', { replace: true })
     }
-  }, [accessToken, role, navigate])
+    checkOfflineSession()
+  }, [])
+
+  const handleContinueOffline = async () => {
+    if (offlineSubmitting) return
+    setOfflineSubmitting(true)
+
+    try {
+      const session = offlineSessionData || await getLastValidSession()
+
+      if (!session || !session.offline_enabled) {
+        setHasOffline(false)
+        setOfflineExpiredMsg('No se encontro una sesion offline valida. Conectate para iniciar sesion nuevamente.')
+        logDebug('DEBUG_AUTH', '[Auth] offline login rejected', {
+          reason: 'missing_offline_session',
+        })
+        return
+      }
+
+      const expires = new Date(session.expires_at)
+      if (Number.isNaN(expires.getTime()) || expires <= new Date()) {
+        setHasOffline(false)
+        setOfflineExpiredMsg('Tu sesion offline expiro. Conectate para iniciar sesion nuevamente.')
+        logDebug('DEBUG_AUTH', '[Auth] offline login rejected', {
+          reason: 'expired_offline_session',
+          expires_at: session.expires_at,
+        })
+        return
+      }
+
+      const nextRole = String(session.role || 'CLIENTE').toUpperCase()
+      const name = session.name || session.email || ''
+      const user = {
+        id: session.user_id,
+        email: session.email || '',
+        first_name: name.split(' ')[0] || '',
+        last_name: name.split(' ').slice(1).join(' ') || '',
+      }
+
+      setOfflineSessionData(session)
+      setSession({
+        access: 'offline_placeholder_token',
+        role: nextRole,
+        user,
+      })
+
+      const redirectTo = ROLE_REDIRECTS[nextRole] || '/'
+      logDebug('DEBUG_AUTH', '[Auth] offline login accepted', {
+        role: nextRole,
+        redirectTo,
+        user_id: session.user_id,
+      })
+      navigate(redirectTo, { replace: true })
+    } finally {
+      setOfflineSubmitting(false)
+    }
+  }
+
+  useEffect(() => {
+    if (authStatus === 'checking') return
+    if (accessToken && role) {
+      navigate(ROLE_REDIRECTS[String(role).toUpperCase()] || '/', { replace: true })
+    }
+  }, [accessToken, role, authStatus, navigate])
   
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -149,51 +238,85 @@ export default function LoginPage() {
             <p className="mt-2 text-[30px]" style={{ color: 'var(--muted)' }}>Inicia sesion para continuar disfrutando de HomeChef.</p>
           </div>
 
-          <form className="mt-7 space-y-4" onSubmit={onSubmit}>
-            <Field
-              label="Correo electronico"
-              value={email}
-              onChange={setEmail}
-              type="email"
-              placeholder="prueba@gmail.com"
-              left="✉"
-              required
-            />
-            <Field
-              label="Contrasena"
-              value={password}
-              onChange={setPassword}
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••••"
-              left="🔒"
-              right={
-                <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="text-lg" aria-label="Alternar visibilidad">
-                  {showPassword ? '🙈' : '👁'}
-                </button>
-              }
-              required
-            />
-
-            <div className="flex items-center justify-between text-sm">
-              <label className="inline-flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
-                <span style={{ color: 'var(--muted)' }}>Recordarme</span>
-              </label>
-              <Link to="/recover-password" style={{ color: 'var(--brand-2)' }} className="font-semibold">
-                Olvidaste tu contrasena?
-              </Link>
+          {!isOnline ? (
+            <div className="space-y-6 text-center mt-7">
+              {hasOffline ? (
+                <div className="space-y-4">
+                  <div
+                    className="rounded-2xl border p-4 text-sm font-semibold tracking-wide text-amber-500 bg-amber-500/10"
+                    style={{ borderColor: 'rgba(245, 158, 11, 0.2)' }}
+                  >
+                    📡 Estás sin conexión a internet, pero tienes una sesión guardada. Puedes continuar en modo offline.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleContinueOffline}
+                    disabled={offlineSubmitting}
+                    className="w-full h-14 rounded-xl text-white text-2xl font-bold transition-all duration-300 active:scale-[0.98]"
+                    style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
+                  >
+                    {offlineSubmitting ? 'Entrando...' : 'Continuar sin conexión'}
+                  </button>
+                </div>
+              ) : (
+                <div
+                  className="rounded-2xl border p-6 text-sm font-semibold text-red-400 bg-red-500/10"
+                  style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}
+                >
+                  <p className="text-xl mb-2">📡 Sin conexión</p>
+                  <p className="text-sm">
+                    {offlineExpiredMsg || 'Conéctate a internet para iniciar sesión por primera vez.'}
+                  </p>
+                </div>
+              )}
             </div>
+          ) : (
+            <form className="mt-7 space-y-4" onSubmit={onSubmit}>
+              <Field
+                label="Correo electronico"
+                value={email}
+                onChange={setEmail}
+                type="email"
+                placeholder="prueba@gmail.com"
+                left="✉"
+                required
+              />
+              <Field
+                label="Contrasena"
+                value={password}
+                onChange={setPassword}
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••••"
+                left="🔒"
+                right={
+                  <button type="button" onClick={() => setShowPassword((prev) => !prev)} className="text-lg" aria-label="Alternar visibilidad">
+                    {showPassword ? '🙈' : '👁'}
+                  </button>
+                }
+                required
+              />
 
-            {error ? <p className="text-sm text-red-500">{error}</p> : null}
+              <div className="flex items-center justify-between text-sm">
+                <label className="inline-flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={remember} onChange={(e) => setRemember(e.target.checked)} />
+                  <span style={{ color: 'var(--muted)' }}>Recordarme</span>
+                </label>
+                <Link to="/recover-password" style={{ color: 'var(--brand-2)' }} className="font-semibold">
+                  Olvidaste tu contrasena?
+                </Link>
+              </div>
 
-            <button
-              disabled={submitting}
-              className="w-full h-14 rounded-xl text-white text-2xl font-bold disabled:opacity-60"
-              style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
-            >
-              {submitting ? 'Iniciando...' : 'Iniciar sesion'}
-            </button>
-          </form>
+              {error ? <p className="text-sm text-red-500">{error}</p> : null}
+
+              <button
+                disabled={submitting}
+                className="w-full h-14 rounded-xl text-white text-2xl font-bold disabled:opacity-60"
+                style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
+              >
+                {submitting ? 'Iniciando...' : 'Iniciar sesion'}
+              </button>
+            </form>
+          )}
 
           <div className="mt-5 rounded-xl border px-4 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)' }}>
             <div>

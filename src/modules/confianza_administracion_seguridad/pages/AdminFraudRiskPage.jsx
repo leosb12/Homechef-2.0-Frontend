@@ -6,6 +6,9 @@ import {
   deleteQualityPublicationPermanent,
   analyzeVisualModeration,
 } from '../services/admin_quality_service'
+import OfflineBanner from '../components/OfflineBanner'
+import { getPendingMutations } from '../services/adminOfflineRepository'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
 
 const FILTERS = [
   { label: 'Pendientes IA', value: 'pendiente_revision_ia' },
@@ -30,6 +33,8 @@ const STATUS_BADGES = {
 }
 
 export default function AdminFraudRiskPage() {
+  const { backendReachable } = useConnectivity()
+  const isOnline = backendReachable
   const [view, setView] = useState('hub')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -37,6 +42,22 @@ export default function AdminFraudRiskPage() {
   const [publications, setPublications] = useState([])
   const [selectedFilter, setSelectedFilter] = useState('pendiente_revision_ia')
   const [search, setSearch] = useState('')
+  const [pendingOps, setPendingOps] = useState([])
+
+  const loadPendingOps = async () => {
+    try {
+      const queue = await getPendingMutations()
+      setPendingOps(queue || [])
+    } catch (e) {
+      console.warn("Could not load pending mutations:", e)
+    }
+  }
+
+  useEffect(() => {
+    void loadPendingOps()
+    window.addEventListener('admin-offline-queue-changed', loadPendingOps)
+    return () => window.removeEventListener('admin-offline-queue-changed', loadPendingOps)
+  }, [])
 
   // Detail Modal States
   const [detailDishId, setDetailDishId] = useState(null)
@@ -90,7 +111,7 @@ export default function AdminFraudRiskPage() {
       if (data && data.image_url) {
         const hasAnalisis = data.analisis_visual
         const needsAnalysis = !hasAnalisis || hasAnalisis.estado === 'ERROR' || !hasAnalisis.estado
-        if (needsAnalysis) {
+        if (needsAnalysis && isOnline) {
           setTimeout(() => {
             void runAutomaticVisualAnalysis(dishId)
           }, 200)
@@ -209,6 +230,10 @@ export default function AdminFraudRiskPage() {
   // Visual AI Moderation
   async function handleAnalyzeVisual() {
     if (!detailDish) return
+    if (!isOnline) {
+      setVisualAnalysisError('El análisis visual no está disponible sin conexión.')
+      return
+    }
     setVisualAnalyzing(true)
     setVisualAnalysisError('')
     try {
@@ -227,6 +252,10 @@ export default function AdminFraudRiskPage() {
   }
 
   async function runAutomaticVisualAnalysis(dishId) {
+    if (!isOnline) {
+      setVisualAnalysisError('El análisis visual automático no está disponible sin conexión.')
+      return
+    }
     setVisualAnalyzing(true)
     setVisualAnalysisError('')
     try {
@@ -306,6 +335,7 @@ export default function AdminFraudRiskPage() {
   if (view === 'hub') {
     return (
       <section className="space-y-6 animate-in fade-in duration-300">
+        <OfflineBanner moduleName="fraud_risk" />
         <div className="flex flex-col gap-3">
           <h1 className="text-4xl font-extrabold tracking-tight">Fraude y riesgo</h1>
           <p style={{ color: 'var(--muted)' }} className="text-sm">
@@ -363,6 +393,7 @@ export default function AdminFraudRiskPage() {
 
   return (
     <section className="space-y-6">
+      <OfflineBanner moduleName="fraud_risk" />
       <div className="flex items-center justify-between gap-4">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-4xl font-extrabold tracking-tight">Fraude y riesgo</h1>
@@ -594,12 +625,19 @@ export default function AdminFraudRiskPage() {
                         <h3 className="font-bold text-lg text-white truncate group-hover:text-[var(--brand-2)] transition-colors">
                           {pub.name || 'Plato sin nombre'}
                         </h3>
-                        <span
-                          className="px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wider uppercase inline-block whitespace-nowrap"
-                          style={{ backgroundColor: badge.bg, color: badge.color }}
-                        >
-                          {badge.label}
-                        </span>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span
+                            className="px-2.5 py-1 rounded-full text-[10px] font-extrabold tracking-wider uppercase inline-block whitespace-nowrap"
+                            style={{ backgroundColor: badge.bg, color: badge.color }}
+                          >
+                            {badge.label}
+                          </span>
+                          {isPending && (
+                            <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 text-[9px] font-bold border border-amber-500/30 animate-pulse whitespace-nowrap">
+                              Pendiente
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <p className="text-xs" style={{ color: 'var(--muted)' }}>
                         Cocinero: <span className="text-white font-medium">{pub.chef_name}</span>
@@ -972,7 +1010,8 @@ export default function AdminFraudRiskPage() {
                               type="button"
                               id="btn-analizar-imagen-ia"
                               onClick={handleAnalyzeVisual}
-                              disabled={visualAnalyzing}
+                              disabled={visualAnalyzing || !isOnline}
+                              title={!isOnline ? "El análisis visual no está disponible sin conexión." : ""}
                               className="w-full flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition-all duration-200 hover:opacity-90 active:scale-95 disabled:opacity-60"
                               style={{
                                 backgroundColor: av ? 'rgba(99,102,241,0.15)' : 'rgba(59,130,246,0.18)',
@@ -999,7 +1038,14 @@ export default function AdminFraudRiskPage() {
                       <div className="text-xs space-y-2">
                         <div className="flex justify-between">
                           <span style={{ color: 'var(--text-soft)' }}>Estado de auditoría:</span>
-                          <span className="font-bold text-white uppercase">{detailDish.revision_status}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-white uppercase">{detailDish.revision_status}</span>
+                            {pendingOps.some(op => op.entity === 'quality_publications' && String(op.server_id) === String(detailDish.id) && op.status === 'pending') && (
+                              <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 text-[10px] font-bold border border-amber-500/30 animate-pulse whitespace-nowrap">
+                                Pendiente
+                              </span>
+                            )}
+                          </div>
                         </div>
                         {detailDish.admin_review_comment ? (
                           <div className="space-y-1">

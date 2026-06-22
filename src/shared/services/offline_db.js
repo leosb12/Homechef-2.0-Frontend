@@ -146,6 +146,31 @@ export async function markLocalEntityDeleted(entity, id) {
   })
 }
 
+export async function reconcileLocalEntityId(entity, local_id, server_id) {
+  if (!local_id) return
+  const localKey = entityKey(entity, String(local_id))
+  const record = await getFromStore(STORES.entities, localKey)
+  
+  if (record) {
+    await deleteFromStore(STORES.entities, localKey)
+    
+    const targetId = server_id || local_id
+    const serverKey = entityKey(entity, String(targetId))
+    
+    record.key = serverKey
+    record.id = String(targetId)
+    record.data = {
+      ...record.data,
+      _id: String(targetId),
+      id: String(targetId),
+      local_id: String(local_id),
+      synced: true
+    }
+    record.updated_at = new Date().toISOString()
+    await putInStore(STORES.entities, record)
+  }
+}
+
 export function entityKey(entity, id) {
   return `${entity}:${id}`
 }
@@ -173,3 +198,22 @@ function requestToPromise(request) {
     request.onerror = () => reject(request.error)
   })
 }
+
+export async function clearAllLocalData() {
+  const db = await openOfflineDb()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(
+      [STORES.entities, STORES.metadata, STORES.operations, STORES.mappings, STORES.conflicts],
+      'readwrite'
+    )
+    tx.objectStore(STORES.entities).clear()
+    tx.objectStore(STORES.metadata).clear()
+    tx.objectStore(STORES.operations).clear()
+    tx.objectStore(STORES.mappings).clear()
+    tx.objectStore(STORES.conflicts).clear()
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+    tx.onabort = () => reject(tx.error)
+  })
+}
+

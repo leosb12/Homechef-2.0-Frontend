@@ -10,6 +10,8 @@ import {
   fetchClientOrderTracking,
   resolveChefOrderIncident,
 } from '../services/tracking_service'
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+import ChefOfflineBanner from '../../gestion_cocinero/components/ChefOfflineBanner'
 
 const INCIDENT_OPTIONS = [
   { value: 'DELAY', label: 'Retraso' },
@@ -23,6 +25,7 @@ const INCIDENT_OPTIONS = [
 export default function OrderTrackingPage({ viewerRole = 'client' }) {
   const navigate = useNavigate()
   const { id = '' } = useParams()
+  const { isOnline } = useConnectivity()
   const [tracking, setTracking] = useState(null)
   const [loading, setLoading] = useState(true)
   const [message, setMessage] = useState('')
@@ -35,7 +38,7 @@ export default function OrderTrackingPage({ viewerRole = 'client' }) {
 
   useEffect(() => {
     load()
-  }, [id, viewerRole])
+  }, [id, viewerRole, isOnline])
 
   useEffect(() => {
     if (!id) return undefined
@@ -101,10 +104,14 @@ export default function OrderTrackingPage({ viewerRole = 'client' }) {
       }
     } catch (error) {
       setOfflineMeta(null)
-      setMessage(
-        error?.response?.data?.detail ||
-          'No se pudo cargar el tracking del pedido.',
-      )
+      if (!isOnline) {
+        setMessage('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setMessage(
+          error?.response?.data?.detail ||
+            'No se pudo cargar el tracking del pedido.',
+        )
+      }
     } finally {
       setLoading(false)
     }
@@ -229,6 +236,7 @@ export default function OrderTrackingPage({ viewerRole = 'client' }) {
 
   return (
     <section className="space-y-5">
+      {viewerRole === 'chef' && <ChefOfflineBanner />}
       <Header viewerRole={viewerRole} navigate={navigate} backUrl={backUrl} />
 
       {message ? <Notice message={message} /> : null}

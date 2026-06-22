@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import PublicDishCard from '../components/PublicDishCard'
 import { fetchPublicDashboard } from '../services/public_dashboard_service'
 
+import { useConnectivity } from '../../../shared/hooks/useConnectivity'
+
 export default function PublicMarketplaceDashboardPage() {
   const navigate = useNavigate()
+  const { isOnline } = useConnectivity()
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
@@ -17,8 +20,12 @@ export default function PublicMarketplaceDashboardPage() {
       const response = await fetchPublicDashboard()
       setDishes(response.dishes || [])
       setMessage(response.message || '')
-    } catch {
-      setError('No se pudo cargar el dashboard publico. Intenta nuevamente.')
+    } catch (err) {
+      if (!isOnline) {
+        setError('No hay datos offline disponibles para esta pantalla. Conéctate y sincroniza cuando tengas internet.')
+      } else {
+        setError('No se pudo cargar el dashboard publico. Intenta nuevamente.')
+      }
     } finally {
       setLoading(false)
     }

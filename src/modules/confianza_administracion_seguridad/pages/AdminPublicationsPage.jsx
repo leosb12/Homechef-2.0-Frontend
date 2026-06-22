@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import AdminPlatformService from '../services/admin_platform_service'
 import ConfirmModal from '../../../shared/components/ConfirmModal'
+import OfflineBanner from '../components/OfflineBanner'
+import { getPendingMutations } from '../services/adminOfflineRepository'
 
 export default function AdminPublicationsPage() {
   const [loading, setLoading] = useState(true)
@@ -8,9 +10,22 @@ export default function AdminPublicationsPage() {
   const [dishes, setDishes] = useState([])
   const [search, setSearch] = useState('')
   const [confirmDish, setConfirmDish] = useState(null)
+  const [pendingOps, setPendingOps] = useState([])
+
+  const loadPendingOps = async () => {
+    try {
+      const queue = await getPendingMutations()
+      setPendingOps(queue || [])
+    } catch (e) {
+      console.warn("Could not load pending mutations:", e)
+    }
+  }
 
   useEffect(() => {
     void loadPublications()
+    void loadPendingOps()
+    window.addEventListener('admin-offline-queue-changed', loadPendingOps)
+    return () => window.removeEventListener('admin-offline-queue-changed', loadPendingOps)
   }, [])
 
   async function loadPublications() {
@@ -53,6 +68,7 @@ export default function AdminPublicationsPage() {
 
   return (
     <section className="space-y-6">
+      <OfflineBanner moduleName="publications" />
       <div>
         <h1 className="text-4xl font-extrabold tracking-tight">Gestión de Publicaciones</h1>
         <p className="mt-2 text-[15px]" style={{ color: 'var(--muted)' }}>
@@ -103,6 +119,11 @@ export default function AdminPublicationsPage() {
                           <div className="h-10 w-10 rounded-lg bg-gray-100" />
                         )}
                         <span className="font-medium">{d.name}</span>
+                        {pendingOps.some(op => op.entity === 'publications' && String(op.server_id) === String(d.id) && op.status === 'pending') && (
+                          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-amber-500/20 text-amber-700 rounded-md border border-amber-500/30 animate-pulse">
+                            Pendiente
+                          </span>
+                        )}
                       </div>
                     </td>
                     <td className="px-5 py-4 align-middle">{d.chef_business_name}</td>
