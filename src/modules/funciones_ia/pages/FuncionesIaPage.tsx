@@ -14,6 +14,10 @@ export default function FuncionesIaPage() {
   const [error, setError] = useState<string>('');
 
   const handleUseIAFunction = async (iaFunction: IAFunctionMetadata) => {
+    if (iaFunction.code === 'vision_artificial') {
+      navigate(iaFunction.path);
+      return;
+    }
     setLoadingCode(iaFunction.code);
     setError('');
     setAccessResponse(null);

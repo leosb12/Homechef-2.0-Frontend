@@ -50,6 +50,11 @@ export default function ChefIAFunctionPage() {
         return;
       }
 
+      if (functionCode === 'vision_artificial') {
+        setStatus('authorized');
+        return;
+      }
+
       const locState = location.state as { authorized?: boolean; functionCode?: string } | null;
       if (locState?.authorized && locState?.functionCode === functionCode) {
         setStatus('authorized');
