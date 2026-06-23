@@ -27,8 +27,8 @@ export default function FunctionCard({ iaFunction, loading, onClick }: FunctionC
       <span className="text-sm flex-1" style={{ color: 'var(--muted)' }}>
         {iaFunction.description}
       </span>
-      <span className="text-sm font-semibold flex items-center gap-1" style={{ color: 'var(--brand-2)' }}>
-        {loading ? 'Validando...' : 'Abrir función'}
+      <span className="text-sm font-semibold flex items-center gap-1" style={{ color: iaFunction.code === 'vision_artificial' ? 'var(--muted)' : 'var(--brand-2)' }}>
+        {loading ? 'Validando...' : iaFunction.code === 'vision_artificial' ? 'Solo disponible en la app móvil' : 'Abrir función'}
         <span className="inline-block transition-transform duration-300 group-hover:translate-x-1">→</span>
       </span>
     </button>
