@@ -4,6 +4,7 @@ import {
   detectIngredients 
 } from '../services/visionArtificial.service';
 import { useAuthSession } from '../../../../gestion_usuarios_acceso_suscripcion/services/auth_session';
+import { useConnectivity } from '../../../../../shared/hooks/useConnectivity';
 
 type VisionStep = 'selectImage' | 'previewImage' | 'analyzing' | 'confirmingIngredients';
 
@@ -12,6 +13,7 @@ const MAX_FILE_SIZE = 8 * 1024 * 1024; // 8MB
 
 export default function VisionArtificialPage() {
   const navigate = useNavigate();
+  const { isOnline } = useConnectivity() as any;
 
   // Auth context
   const { user } = useAuthSession() as any;
@@ -169,6 +171,22 @@ export default function VisionArtificialPage() {
         </div>
       </div>
 
+      {!isOnline && (
+        <div
+          className="p-4 rounded-xl border flex items-center gap-2.5 font-semibold text-sm transition-all duration-300 animate-in fade-in"
+          style={{
+            borderColor: 'rgba(239, 68, 68, 0.3)',
+            backgroundColor: 'rgba(239, 68, 68, 0.08)',
+            color: '#ef4444',
+          }}
+        >
+          <svg className="w-5 h-5 flex-shrink-0 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Esta función requiere conexión.</span>
+        </div>
+      )}
+
       {/* Error alert */}
       {errorMessage && (
         <div className="p-4 rounded-xl bg-red-950/30 border border-red-500/40 text-red-200 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -210,10 +228,11 @@ export default function VisionArtificialPage() {
             />
             <button
               type="button"
+              disabled={!isOnline}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
-              className="flex-1 py-4 px-6 rounded-xl font-bold text-white transition duration-200 hover:opacity-95 text-center flex items-center justify-center gap-2"
+              className="flex-1 py-4 px-6 rounded-xl font-bold text-white transition duration-200 hover:opacity-95 text-center flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
             >
               <span>📤</span> Seleccionar imagen de despensa
@@ -255,8 +274,9 @@ export default function VisionArtificialPage() {
             </button>
             <button
               type="button"
+              disabled={!isOnline}
               onClick={handleAnalyzeImage}
-              className="flex-1 py-3.5 rounded-xl font-bold text-white transition duration-200 hover:opacity-95 text-center flex items-center justify-center gap-2"
+              className="flex-1 py-3.5 rounded-xl font-bold text-white transition duration-200 hover:opacity-95 text-center flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
             >
               <span>✨</span> Analizar ingredientes

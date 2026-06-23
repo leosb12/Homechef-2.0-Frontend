@@ -62,9 +62,24 @@ export class OfflineFallbackTrigger extends Error {
 }
 
 export function canBypassIAAccessForOfflineDev(functionCode?: string): boolean {
-  const allowed = functionCode === 'asistente_ia' || functionCode === 'demanda_precios' || functionCode === 'publicacion_platos';
+  const allowed =
+    functionCode === 'asistente_ia' ||
+    functionCode === 'demanda_precios' ||
+    functionCode === 'publicacion_platos' ||
+    functionCode === 'vision_artificial';
   if (!allowed) return false;
-  if (import.meta.env.PROD) return false;
+  if (import.meta.env.PROD) {
+    if (typeof window === 'undefined') return false;
+    const token = localStorage.getItem('homechef_access_token');
+    const cached = localStorage.getItem(`homechef_ia_permission_${functionCode}`);
+    if (!token || !cached) return false;
+    try {
+      const parsed = JSON.parse(cached);
+      return Boolean(parsed.permitido);
+    } catch {
+      return false;
+    }
+  }
   if (typeof window === 'undefined') return false;
   const host = window.location.hostname;
   return host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');

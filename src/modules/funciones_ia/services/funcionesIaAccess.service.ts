@@ -1,5 +1,6 @@
 import axios, { AxiosError } from 'axios';
 import type { UsarFuncionIARequest, UsarFuncionIAResponse } from '../types/funcionesIa.types';
+import { isNetworkLikeError } from '../shared/offline/offline_utils';
 
 const IA_API_BASE_URL =
   runtimeConfig().VITE_API_BASE_URL ||
@@ -11,6 +12,7 @@ const IA_API_BASE_URL =
 const iaAccessApi = axios.create({
   baseURL: IA_API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 5000,
 });
 
 iaAccessApi.interceptors.request.use((config) => {
@@ -22,8 +24,30 @@ iaAccessApi.interceptors.request.use((config) => {
 export async function usarFuncionIA(funcion: UsarFuncionIARequest['funcion']): Promise<UsarFuncionIAResponse> {
   try {
     const { data } = await iaAccessApi.post<UsarFuncionIAResponse>('/api/ia/usar-funcion', { funcion });
+    if (data && data.permitido) {
+      localStorage.setItem(`homechef_ia_permission_${funcion}`, JSON.stringify(data));
+    }
     return data;
   } catch (error) {
+    if (isNetworkLikeError(error)) {
+      const token = localStorage.getItem('homechef_access_token');
+      const cached = localStorage.getItem(`homechef_ia_permission_${funcion}`);
+      if (token && cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.permitido) {
+            return {
+              ...parsed,
+              mensaje: 'Backend no disponible. Usando último acceso IA validado.',
+              offlineCachedAccess: true,
+            };
+          }
+        } catch (e) {
+          console.warn('[funcionesIaAccess.service] Error parsing cached permission:', e);
+        }
+      }
+    }
+
     const axiosError = error as AxiosError<Partial<UsarFuncionIAResponse>>;
     if (axiosError.response?.data?.codigo) {
       return normalizeIAResponse(axiosError.response.data);
