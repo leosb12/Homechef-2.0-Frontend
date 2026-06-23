@@ -63,7 +63,8 @@ export default function AdminSyncBadge() {
     browserOnline,
   } = useConnectivity();
 
-  const [isOpen, setIsOpen] = useState(false);
+  const [showTooltip, setShowTooltip] = useState(false);
+  const [closedManually, setClosedManually] = useState(false);
   const [mutations, setMutations] = useState([]);
   const user = useAuthSession(state => state.user);
 
@@ -72,6 +73,12 @@ export default function AdminSyncBadge() {
     const queue = await getPendingMutations();
     setMutations(queue);
   };
+
+  useEffect(() => {
+    if (syncStatus === 'syncing') {
+      setClosedManually(false);
+    }
+  }, [syncStatus]);
 
   useEffect(() => {
     // Run an initial counts load
@@ -138,8 +145,13 @@ export default function AdminSyncBadge() {
     checkCacheOwnership();
   }, [user]);
 
+  const hasFailedModules = Object.values(moduleStatus).some(m => m.status === 'failed') || Object.keys(syncErrors).length > 0;
+  const isOnline = backendReachable;
+  const currentStatus = isOnline ? syncStatus : 'offline';
+  const showPopover = (showTooltip || currentStatus === 'syncing') && !closedManually;
+
   useEffect(() => {
-    if (!isOpen) return;
+    if (!showPopover) return;
     const handleOutsideClick = (e) => {
       const popover = document.getElementById('sync-badge-popover');
       const trigger = document.getElementById('sync-badge-trigger');
@@ -149,19 +161,14 @@ export default function AdminSyncBadge() {
         trigger &&
         !trigger.contains(e.target)
       ) {
-        setIsOpen(false);
+        setClosedManually(true);
       }
     };
     document.addEventListener('click', handleOutsideClick);
     return () => {
       document.removeEventListener('click', handleOutsideClick);
     };
-  }, [isOpen]);
-
-  const hasFailedModules = Object.values(moduleStatus).some(m => m.status === 'failed') || Object.keys(syncErrors).length > 0;
-  const isOnline = backendReachable;
-  const currentStatus = isOnline ? syncStatus : 'offline';
-  const showPopover = isOpen;
+  }, [showPopover]);
   
   const handleSyncClick = async (e) => {
     e.stopPropagation();
@@ -240,7 +247,16 @@ export default function AdminSyncBadge() {
           backgroundColor: 'var(--panel-soft)',
           color: 'var(--text)',
         }}
-        onClick={() => setIsOpen(!isOpen)}
+        onMouseEnter={() => {
+          setClosedManually(false);
+          setShowTooltip(true);
+        }}
+        onMouseLeave={() => setShowTooltip(false)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setClosedManually(false);
+          setShowTooltip(!showTooltip);
+        }}
       >
         <span 
           className="h-2.5 w-2.5 rounded-full"
@@ -329,9 +345,10 @@ export default function AdminSyncBadge() {
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  setIsOpen(false);
+                  setClosedManually(true);
                 }}
-                className="text-slate-400 hover:text-white transition-colors p-1"
+                className="rounded-full p-1 text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+                title="Cerrar panel"
                 aria-label="Cerrar panel"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
