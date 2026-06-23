@@ -29,6 +29,7 @@ const IA_API_BASE_URL =
 const iaApi = axios.create({
   baseURL: IA_API_BASE_URL,
   headers: { 'Content-Type': 'application/json' },
+  timeout: 5000,
 })
 
 iaApi.interceptors.request.use((config) => {

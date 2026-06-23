@@ -19,6 +19,7 @@ export interface UsarFuncionIAResponse {
   permitido: boolean;
   codigo: IACodigoRespuesta;
   mensaje: string;
+  offlineCachedAccess?: boolean;
 }
 
 export interface IAFunctionMetadata {

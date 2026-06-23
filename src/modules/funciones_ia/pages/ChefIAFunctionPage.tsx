@@ -4,7 +4,7 @@ import IAAccessNotice from '../components/IAAccessNotice';
 import { IA_FUNCTIONS } from '../constants/iaFunctions';
 import { usarFuncionIA } from '../services/funcionesIaAccess.service';
 import type { UsarFuncionIAResponse } from '../types/funcionesIa.types';
-import { canBypassIAAccessForOfflineDev } from '../shared/offline/offline_utils';
+import { canBypassIAAccessForOfflineDev, isNetworkLikeError } from '../shared/offline/offline_utils';
 
 // Import submodules pages
 import AsistenteIaPage from '../submodules/asistente_ia/pages/AsistenteIaPage';
@@ -62,12 +62,13 @@ export default function ChefIAFunctionPage() {
         const response = await usarFuncionIA(functionCode);
         if (ignore) return;
         if (response.codigo === 'ACCESO_AUTORIZADO' && response.permitido) {
+          setAccessResponse(response);
           setStatus('authorized');
           return;
         }
         setAccessResponse(response);
         setStatus('blocked');
-      } catch {
+      } catch (err) {
         if (!ignore) {
           if (canBypassIAAccessForOfflineDev(functionCode)) {
             setAccessResponse({
@@ -78,7 +79,11 @@ export default function ChefIAFunctionPage() {
             setStatus('authorized');
             return;
           }
-          setError('No se pudo validar el acceso a la función IA.');
+          if (isNetworkLikeError(err)) {
+            setError('No hay permiso IA cacheado. Conéctate una vez para validar tu suscripción.');
+          } else {
+            setError('No se pudo validar el acceso a la función IA.');
+          }
           setStatus('blocked');
         }
       }

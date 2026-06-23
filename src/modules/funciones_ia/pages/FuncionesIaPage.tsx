@@ -5,7 +5,7 @@ import IAAccessNotice from '../components/IAAccessNotice';
 import { IA_FUNCTIONS } from '../constants/iaFunctions';
 import { usarFuncionIA } from '../services/funcionesIaAccess.service';
 import type { UsarFuncionIAResponse, IAFunctionMetadata } from '../types/funcionesIa.types';
-import { canBypassIAAccessForOfflineDev } from '../shared/offline/offline_utils';
+import { canBypassIAAccessForOfflineDev, isNetworkLikeError } from '../shared/offline/offline_utils';
 
 export default function FuncionesIaPage() {
   const navigate = useNavigate();
@@ -20,16 +20,32 @@ export default function FuncionesIaPage() {
     try {
       const response = await usarFuncionIA(iaFunction.code);
       if (response.codigo === 'ACCESO_AUTORIZADO' && response.permitido) {
-        navigate(iaFunction.path, { state: { authorized: true, functionCode: iaFunction.code } });
+        navigate(iaFunction.path, {
+          state: {
+            authorized: true,
+            functionCode: iaFunction.code,
+            offlineCachedAccess: response.offlineCachedAccess,
+          },
+        });
         return;
       }
       setAccessResponse(response);
-    } catch {
+    } catch (err) {
       if (canBypassIAAccessForOfflineDev(iaFunction.code)) {
-        navigate(iaFunction.path, { state: { authorized: true, functionCode: iaFunction.code, offlineDevAccess: true } });
+        navigate(iaFunction.path, {
+          state: {
+            authorized: true,
+            functionCode: iaFunction.code,
+            offlineDevAccess: true,
+          },
+        });
         return;
       }
-      setError('No se pudo validar el acceso a la función IA.');
+      if (isNetworkLikeError(err)) {
+        setError('No hay permiso IA cacheado. Conéctate una vez para validar tu suscripción.');
+      } else {
+        setError('No se pudo validar el acceso a la función IA.');
+      }
     } finally {
       setLoadingCode('');
     }

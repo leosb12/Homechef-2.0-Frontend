@@ -36,6 +36,11 @@ export default function SyncStatusBadge() {
     color = '#3b82f6'
     borderColor = 'rgba(59, 130, 246, 0.3)'
     backgroundColor = 'rgba(59, 130, 246, 0.05)'
+  } else if (connectionState === 'degraded') {
+    label = 'IA no disponible'
+    color = '#f59e0b'
+    borderColor = 'rgba(245, 158, 11, 0.3)'
+    backgroundColor = 'rgba(245, 158, 11, 0.05)'
   } else if (connectionState === 'checking') {
     label = 'Comprobando...'
     color = 'var(--muted)'
