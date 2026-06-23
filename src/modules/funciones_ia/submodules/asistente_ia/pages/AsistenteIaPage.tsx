@@ -4,6 +4,7 @@ import { useAuthSession } from '../../../../gestion_usuarios_acceso_suscripcion/
 import { suggestRecipes } from '../services/asistenteIa.service';
 import type { RecipeSuggestResponse, RecipeSuggestionItem } from '../types/asistenteIa.types';
 import OfflineResultNotice from '../../../components/OfflineResultNotice';
+import SpeechInputButton from '../../../../../shared/components/SpeechInputButton';
 
 const PREDEFINED_INGREDIENTS = [
   'Pollo', 'Carne molida', 'Arroz', 'Papa', 'Huevo', 'Queso', 'Tomate',
@@ -149,14 +150,21 @@ export default function AsistenteIaPage() {
         <form onSubmit={handleSubmit} className="rounded-xl border p-6 space-y-6" style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel)' }}>
           <div className="space-y-2">
             <label className="block text-sm font-semibold text-white">¿Qué quieres cocinar hoy?</label>
-            <textarea
-              className="w-full rounded-lg border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)] transition-all"
-              style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)', color: 'var(--text)' }}
-              placeholder="Ej. Necesito una receta rápida para vender a la hora del almuerzo, que sea económica y rinda mucho..."
-              rows={3}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-            />
+            <div className="relative">
+              <textarea
+                className="w-full rounded-lg border p-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand)] transition-all"
+                style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)', color: 'var(--text)' }}
+                placeholder="Ej. Necesito una receta rápida para vender a la hora del almuerzo, que sea económica y rinda mucho..."
+                rows={3}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+              />
+              <div className="absolute bottom-3 right-3 flex items-center">
+                <SpeechInputButton
+                  onTranscript={(text) => setPrompt((prev) => (prev ? prev + ' ' + text : text))}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-3">

@@ -38,11 +38,11 @@ describe('VisionArtificialPage informative mode', () => {
 
     const backButton = screen.getByText('Volver al Asistente IA');
     await userEvent.click(backButton);
-    expect(navigateMock).toHaveBeenCalledWith('/chef/ai');
+    expect(navigateMock).toHaveBeenCalledWith('/chef/ai/assistant');
 
     const assistantButton = screen.getByText('Ir a Asistente IA textual');
     await userEvent.click(assistantButton);
-    expect(navigateMock).toHaveBeenCalledWith('/chef/ai/assistant/use');
+    expect(navigateMock).toHaveBeenCalledWith('/chef/ai/assistant');
 
     const pricingButton = screen.getByText('Ir a Demanda y precios');
     await userEvent.click(pricingButton);

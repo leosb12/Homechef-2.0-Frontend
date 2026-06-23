@@ -5,6 +5,7 @@ import { getScreenForRoute } from '../offline/frontendManualDataset';
 import { getChatbotPageContext } from '../services/chatbotPageContext';
 import { askUserManualChatbot, getManualSessionId, normalizeRole } from '../services/userManualChatbot.service';
 import type { ManualChatMessage, ManualChatResponse } from '../types/userManualChatbot.types';
+import SpeechInputButton from '../../../shared/components/SpeechInputButton';
 
 const showDebugMetadata = import.meta.env.VITE_CHATBOT_DEBUG === 'true';
 
@@ -181,22 +182,30 @@ export default function ChatbotWidget() {
               </p>
             ) : null}
             <div className="flex gap-2">
-              <textarea
-                className="min-h-11 flex-1 resize-none rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-200"
-                style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)', color: 'var(--text)' }}
-                placeholder="Ej: Que hago aqui?"
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter' && !event.shiftKey) {
-                    event.preventDefault();
-                    void sendMessage();
-                  }
-                }}
-              />
+              <div className="relative flex-1">
+                <textarea
+                  className="w-full min-h-11 resize-none rounded-xl border pl-3 pr-10 py-2 text-sm outline-none focus:ring-2 focus:ring-violet-200"
+                  style={{ borderColor: 'var(--line)', backgroundColor: 'var(--panel-soft)', color: 'var(--text)' }}
+                  placeholder="Ej: Que hago aqui?"
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                      event.preventDefault();
+                      void sendMessage();
+                    }
+                  }}
+                />
+                <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center">
+                  <SpeechInputButton
+                    onTranscript={(text) => setInput((prev) => (prev ? prev + ' ' + text : text))}
+                    size="sm"
+                  />
+                </div>
+              </div>
               <button
                 type="button"
-                className="rounded-xl px-4 py-2 text-sm font-bold text-white disabled:opacity-60"
+                className="rounded-xl px-4 py-2 text-sm font-bold text-white disabled:opacity-60 h-11 self-end"
                 style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
                 onClick={() => void sendMessage()}
                 disabled={isSending || !input.trim()}

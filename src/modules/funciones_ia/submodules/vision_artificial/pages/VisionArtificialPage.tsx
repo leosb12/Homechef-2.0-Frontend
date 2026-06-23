@@ -47,7 +47,7 @@ export default function VisionArtificialPage() {
         <div className="pt-6 flex flex-col sm:flex-row gap-4 justify-center">
           <button
             type="button"
-            onClick={() => navigate('/chef/ai')}
+            onClick={() => navigate('/chef/ai/assistant')}
             className="px-6 py-3 rounded-xl border font-bold hover:bg-[var(--panel-soft)] transition-all duration-200"
             style={{ borderColor: 'var(--line)' }}
           >
@@ -55,7 +55,7 @@ export default function VisionArtificialPage() {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/chef/ai/assistant/use')}
+            onClick={() => navigate('/chef/ai/assistant')}
             className="px-6 py-3 rounded-xl font-bold text-white transition-all duration-200 hover:opacity-95"
             style={{ background: 'linear-gradient(90deg, var(--brand), var(--brand-2))' }}
           >
