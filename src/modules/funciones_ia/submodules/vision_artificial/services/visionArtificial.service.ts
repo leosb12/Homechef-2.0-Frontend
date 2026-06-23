@@ -8,7 +8,14 @@ import type {
   RecipeSuggestionResponse
 } from '../types/visionArtificial.types';
 
-const IA_MICROSERVICE_URL = import.meta.env.VITE_IA_SERVICE_URL || 'http://localhost:8001';
+const runtimeConfig =
+  typeof globalThis !== 'undefined' ? ((globalThis as any).__HOMECHEF_RUNTIME_CONFIG || {}) : {};
+
+const IA_MICROSERVICE_URL =
+  runtimeConfig.VITE_IA_SERVICE_URL ||
+  runtimeConfig.IA_SERVICE_URL ||
+  import.meta.env.VITE_IA_SERVICE_URL ||
+  'https://proyecto.leonardoserrate.xyz/ia';
 
 export async function uploadImage(file: File): Promise<ImageUploadResponse> {
   const formData = new FormData();
@@ -61,4 +68,3 @@ export async function recommendRecipes(ingredients: string[], chefId: string): P
   );
   return data;
 }
-

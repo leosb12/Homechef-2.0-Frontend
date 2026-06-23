@@ -7,10 +7,13 @@ import { API_URL } from './api'
 import { computeConnectionState } from './sync_store'
 import { logDebug } from './debug_logger'
 
+const runtimeConfig =
+  typeof window !== 'undefined' ? window.__HOMECHEF_RUNTIME_CONFIG || {} : {}
+
 const IA_SERVICE_URL =
   typeof import.meta !== 'undefined'
-    ? (import.meta.env?.VITE_IA_SERVICE_URL || 'https://homechef-ia-service.onrender.com')
-    : 'https://homechef-ia-service.onrender.com'
+    ? (runtimeConfig.VITE_IA_SERVICE_URL || runtimeConfig.IA_SERVICE_URL || import.meta.env?.VITE_IA_SERVICE_URL || 'https://proyecto.leonardoserrate.xyz/ia')
+    : 'https://proyecto.leonardoserrate.xyz/ia'
 
 const HEALTH_CHECK_TIMEOUT = 5000
 const RECHECK_INTERVAL = 45_000
@@ -243,4 +246,3 @@ export function initConnectivityService() {
 
   void checkConnectivity()
 }
-

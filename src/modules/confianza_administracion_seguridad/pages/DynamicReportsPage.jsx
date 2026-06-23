@@ -8,7 +8,13 @@ import { syncAdminNow } from '../services/offlineSyncService';
 import { detectLocalFormat, processLocalQuery } from '../services/localReportEngine';
 import { API_URL } from '../../../shared/services/api';
 
-
+const runtimeConfig =
+    typeof window !== 'undefined' ? window.__HOMECHEF_RUNTIME_CONFIG || {} : {};
+const IA_SERVICE_URL =
+    runtimeConfig.VITE_IA_SERVICE_URL ||
+    runtimeConfig.IA_SERVICE_URL ||
+    import.meta.env.VITE_IA_SERVICE_URL ||
+    'https://proyecto.leonardoserrate.xyz/ia';
 
 export default function DynamicReportsPage() {
     const { backendReachable, iaServiceReachable, browserOnline } = useConnectivity();
@@ -175,7 +181,7 @@ export default function DynamicReportsPage() {
 
     const checkLevel2OfflineService = async () => {
         console.log("[DynamicReports] Checking Level 2 ia-service offline...");
-        const iaUrl = import.meta.env.VITE_IA_SERVICE_URL || 'http://localhost:8001';
+        const iaUrl = IA_SERVICE_URL;
         const level2Url = `${iaUrl}/health`;
         console.log("[DynamicReports] Level 2 URL:", level2Url);
         
@@ -337,7 +343,7 @@ export default function DynamicReportsPage() {
             }
 
             try {
-                const iaUrl = import.meta.env.VITE_IA_SERVICE_URL || 'http://localhost:8001';
+                const iaUrl = IA_SERVICE_URL;
                 const response = await fetch(`${iaUrl}/api/v1/ai/reports/generate-offline`, {
                     method: 'POST',
                     headers: {
@@ -438,7 +444,7 @@ export default function DynamicReportsPage() {
             console.error("Level 1 execution failed:", error);
             if (snapshot) {
                 try {
-                    const iaUrl = import.meta.env.VITE_IA_SERVICE_URL || 'http://localhost:8001';
+                    const iaUrl = IA_SERVICE_URL;
                     const iaRes = await fetch(`${iaUrl}/health`);
                     if (iaRes.ok) {
                         setMode('ia_offline');

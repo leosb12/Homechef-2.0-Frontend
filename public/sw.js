@@ -11,7 +11,7 @@
  * 7. Evitar romper desarrollo con Vite (ignora HMR y websocket).
  */
 
-const CACHE_VERSION = 'v2.1';
+const CACHE_VERSION = 'v2.2-domain-proyecto';
 const CACHE_NAME = `homechef-shell-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `homechef-runtime-${CACHE_VERSION}`;
 
@@ -73,7 +73,8 @@ self.addEventListener('fetch', (event) => {
     url.pathname.includes('/api/') || 
     url.pathname.includes('/sync/') || 
     url.pathname.includes('/trust-admin/') ||
-    url.pathname.includes('/admin/sync/')
+    url.pathname.includes('/admin/sync/') ||
+    url.pathname === '/runtime-config.js'
   ) {
     return; // Peticiones dinámicas van sólo a red
   }

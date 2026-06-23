@@ -76,7 +76,11 @@ export default function SyncStatusBadge() {
     try {
       await syncNow(true, { trigger: 'badge-click' })
     } catch (err) {
-      alert(`Error al sincronizar: ${err.message || 'Error de red.'}`)
+      console.error('Error during manual sync click:', err)
+      const message = err.message || 'Error de red.'
+      const { useSyncStore } = await import('../services/sync_store')
+      useSyncStore.getState().setLastError(message)
+      useSyncStore.getState().setSyncStatus('error')
     } finally {
       setIsDiagnosing(false)
     }
