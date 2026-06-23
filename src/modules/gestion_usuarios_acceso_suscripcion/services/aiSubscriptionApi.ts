@@ -20,9 +20,11 @@ import type {
 } from '../types/aiSubscription'
 
 const IA_API_BASE_URL =
+  runtimeConfig().VITE_API_BASE_URL ||
+  runtimeConfig().API_BASE_URL ||
   import.meta.env.VITE_API_BASE_URL ||
   apiOriginFrom(import.meta.env.VITE_API_URL) ||
-  'https://homechef-2-0-backend.onrender.com'
+  'https://proyecto.leonardoserrate.xyz'
 
 const iaApi = axios.create({
   baseURL: IA_API_BASE_URL,
@@ -133,4 +135,8 @@ function buildFailure(message: string, error?: ApiErrorResponse['error'], status
 function apiOriginFrom(apiUrl?: string) {
   if (!apiUrl) return ''
   return apiUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '')
+}
+
+function runtimeConfig() {
+  return typeof globalThis !== 'undefined' ? ((globalThis as any).__HOMECHEF_RUNTIME_CONFIG || {}) : {}
 }

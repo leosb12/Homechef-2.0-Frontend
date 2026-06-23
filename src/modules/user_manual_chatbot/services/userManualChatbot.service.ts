@@ -2,7 +2,14 @@ import axios from 'axios';
 import { answerWithFrontendManual } from '../offline/frontendManualEngine';
 import type { ManualChatRequest, ManualChatResponse, ManualUserRole } from '../types/userManualChatbot.types';
 
-const IA_SERVICE_URL = import.meta.env.VITE_IA_SERVICE_URL || 'http://localhost:8001';
+const runtimeConfig =
+  typeof globalThis !== 'undefined' ? ((globalThis as any).__HOMECHEF_RUNTIME_CONFIG || {}) : {};
+
+const IA_SERVICE_URL =
+  runtimeConfig.VITE_IA_SERVICE_URL ||
+  runtimeConfig.IA_SERVICE_URL ||
+  import.meta.env.VITE_IA_SERVICE_URL ||
+  'https://proyecto.leonardoserrate.xyz/ia';
 
 const iaServiceApi = axios.create({
   baseURL: `${IA_SERVICE_URL}/api/v1/ai/user-manual-chatbot`,

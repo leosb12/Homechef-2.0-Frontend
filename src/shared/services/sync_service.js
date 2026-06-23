@@ -330,7 +330,12 @@ async function runSync(manual, options) {
     result.failedTotal = useSyncStore.getState().failedCount
     logSync('finished', result)
     if (shouldNotifyManual && typeof window !== 'undefined') {
-      alert(formatManualResult(result))
+      const hasErrors = result.errors.length > 0 || result.failed > 0 || result.status === 'error'
+      if (!hasErrors) {
+        alert(formatManualResult(result))
+      } else {
+        console.error('[Sync] Manual sync failed with errors:', result)
+      }
     }
   }
 }
@@ -368,6 +373,38 @@ async function prepareQueueForPush(baseResult) {
   const last_sync = await getLastSync()
 
   for (const op of readyOps) {
+    if (op.endpoint && (op.endpoint.includes('/sync/') || op.endpoint.includes('/api/v1/sync/'))) {
+      if (op.entity === 'cart') {
+        if (op.action === 'ADD_ITEM' || op.action === 'ADD') {
+          op.endpoint = '/orders/cart/items/'
+          op.method = 'POST'
+        } else if (op.action === 'UPDATE_ITEM' || op.action === 'EDIT' || op.action === 'UPDATE') {
+          const itemId = op.payload?.itemId || op.local_id || op.server_id
+          if (itemId) {
+            op.endpoint = `/orders/cart/items/${itemId}/`
+            op.method = 'PUT'
+          }
+        } else if (op.action === 'REMOVE_ITEM' || op.action === 'REMOVE' || op.action === 'DELETE') {
+          const itemId = op.payload?.itemId || op.local_id || op.server_id
+          if (itemId) {
+            op.endpoint = `/orders/cart/items/${itemId}/`
+            op.method = 'DELETE'
+          }
+        }
+      }
+
+      if (op.endpoint.includes('/sync/') || op.endpoint.includes('/api/v1/sync/')) {
+        op.status = OPERATION_STATUS.FAILED
+        op.last_error = 'Operación legacy no compatible. Se puede descartar.'
+        op.updated_at = new Date().toISOString()
+        await putInStore(STORES.operations, op)
+        result.failed += 1
+        result.failedIds.push(op.operation_id)
+        result.errors.push(op.last_error)
+        continue
+      }
+    }
+
     result.attempted += 1
     logSync('processing action', {
       id: op.operation_id,
@@ -699,7 +736,31 @@ function findResponseItem(items = [], operationId) {
 }
 
 function extractHttpErrorMessage(error) {
+  const status = error?.response?.status
   const data = error?.response?.data
+  const contentType = error?.response?.headers?.['content-type'] || ''
+
+  console.error('[Sync Technical Error Details]:', {
+    status,
+    url: error?.config?.url,
+    method: error?.config?.method,
+    data: data,
+    message: error?.message,
+    stack: error?.stack,
+  })
+
+  const isHtml = (typeof data === 'string' && data.includes('<html')) || contentType.includes('text/html')
+  const isServerBug =
+    status === 500 ||
+    status === 504 ||
+    status === 404 ||
+    status === 405 ||
+    (data && typeof data === 'string' && data.includes('TypeError'))
+
+  if (isHtml || isServerBug) {
+    return 'No se pudo sincronizar esta acción. Intenta nuevamente o revisa tu conexión.'
+  }
+
   if (!data) return error?.message || ''
   if (typeof data === 'string') return data
   if (typeof data.detail === 'string') return data.detail

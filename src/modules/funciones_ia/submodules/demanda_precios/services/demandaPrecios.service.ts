@@ -3,7 +3,14 @@ import type { ProductionPricingRequest, ProductionPricingResponse, PreviewImputa
 import { runOnlineFirst } from '../../../shared/offline/offline_ai_orchestrator';
 import { previewPricingOffline, recommendPricingOffline } from '../offline/demandaPreciosOffline.engine';
 
-const IA_MICROSERVICE_URL = import.meta.env.VITE_IA_SERVICE_URL || 'http://localhost:8001';
+const runtimeConfig =
+  typeof globalThis !== 'undefined' ? ((globalThis as any).__HOMECHEF_RUNTIME_CONFIG || {}) : {};
+
+const IA_MICROSERVICE_URL =
+  runtimeConfig.VITE_IA_SERVICE_URL ||
+  runtimeConfig.IA_SERVICE_URL ||
+  import.meta.env.VITE_IA_SERVICE_URL ||
+  'https://proyecto.leonardoserrate.xyz/ia';
 
 const iaMicroserviceApi = axios.create({
   baseURL: `${IA_MICROSERVICE_URL}/api/v1/ai`,

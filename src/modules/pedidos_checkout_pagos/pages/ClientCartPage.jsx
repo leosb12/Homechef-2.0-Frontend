@@ -66,7 +66,7 @@ export default function ClientCartPage() {
     setMessage('')
     setBusyItemId(item.id)
     try {
-      const data = await updateCartItem({ itemId: item.id, quantity: nextQuantity })
+      const data = await updateCartItem({ itemId: item.id, quantity: nextQuantity, dishId: item.dish_id })
       mergeCartPayload(data.cart)
     } catch (error) {
       setMessage(error?.response?.data?.detail || 'No se pudo actualizar la cantidad.')

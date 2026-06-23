@@ -148,7 +148,7 @@ export default function ReportResults({ chartData, rawData, prompt, onReset }) {
       const token = localStorage.getItem("homechef_access_token") || "";
 
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1"}/admin/dynamic-reports/export/`,
+        `${window.__HOMECHEF_RUNTIME_CONFIG?.VITE_API_URL || window.__HOMECHEF_RUNTIME_CONFIG?.API_URL || import.meta.env.VITE_API_URL || "https://proyecto.leonardoserrate.xyz/api/v1"}/admin/dynamic-reports/export/`,
         {
           method: "POST",
           headers: {

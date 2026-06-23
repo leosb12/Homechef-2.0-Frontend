@@ -42,6 +42,7 @@ describe('ClientCartPage', () => {
           items: [
             {
               id: 'item-1',
+              dish_id: 'dish-1',
               dish_name: 'Pique macho',
               unit_price: 20,
               subtotal: 20,
@@ -63,6 +64,7 @@ describe('ClientCartPage', () => {
         items: [
           {
             id: 'item-1',
+            dish_id: 'dish-1',
             dish_name: 'Pique macho',
             unit_price: 20,
             subtotal: 40,
@@ -81,7 +83,7 @@ describe('ClientCartPage', () => {
     await userEvent.click(screen.getByRole('button', { name: '+' }))
 
     await waitFor(() => {
-      expect(updateCartItemMock).toHaveBeenCalledWith({ itemId: 'item-1', quantity: 2 })
+      expect(updateCartItemMock).toHaveBeenCalledWith({ itemId: 'item-1', quantity: 2, dishId: 'dish-1' })
     })
     expect(await screen.findByText(/2 item\(s\)/i)).toBeInTheDocument()
     expect(screen.getByText('Bs 40.00')).toBeInTheDocument()

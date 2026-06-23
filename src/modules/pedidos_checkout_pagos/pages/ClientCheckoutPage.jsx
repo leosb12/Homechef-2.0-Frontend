@@ -1035,22 +1035,27 @@ function updateAddress(setForm, field, value) {
   }))
 }
 
+function runtimeConfigValue(key) {
+  if (typeof window === 'undefined') return ''
+  return window.__HOMECHEF_RUNTIME_CONFIG?.[key] || ''
+}
+
 function successRedirectForPaymentMethod(paymentMethod) {
   if (paymentMethod === 'stripe_test') {
-    return import.meta.env.VITE_ORDER_STRIPE_SUCCESS_REDIRECT_TO || ''
+    return runtimeConfigValue('VITE_ORDER_STRIPE_SUCCESS_REDIRECT_TO') || import.meta.env.VITE_ORDER_STRIPE_SUCCESS_REDIRECT_TO || ''
   }
   if (paymentMethod === 'bitcoin_coingate') {
-    return import.meta.env.VITE_ORDER_COINGATE_SUCCESS_REDIRECT_TO || ''
+    return runtimeConfigValue('VITE_ORDER_COINGATE_SUCCESS_REDIRECT_TO') || import.meta.env.VITE_ORDER_COINGATE_SUCCESS_REDIRECT_TO || ''
   }
   return ''
 }
 
 function cancelRedirectForPaymentMethod(paymentMethod) {
   if (paymentMethod === 'stripe_test') {
-    return import.meta.env.VITE_ORDER_STRIPE_CANCEL_REDIRECT_TO || ''
+    return runtimeConfigValue('VITE_ORDER_STRIPE_CANCEL_REDIRECT_TO') || import.meta.env.VITE_ORDER_STRIPE_CANCEL_REDIRECT_TO || ''
   }
   if (paymentMethod === 'bitcoin_coingate') {
-    return import.meta.env.VITE_ORDER_COINGATE_CANCEL_REDIRECT_TO || ''
+    return runtimeConfigValue('VITE_ORDER_COINGATE_CANCEL_REDIRECT_TO') || import.meta.env.VITE_ORDER_COINGATE_CANCEL_REDIRECT_TO || ''
   }
   return ''
 }

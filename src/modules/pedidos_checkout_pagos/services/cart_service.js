@@ -92,11 +92,11 @@ export async function addCartItem({ dishId, quantity, fulfillmentType = '' }) {
   )
 }
 
-export async function updateCartItem({ itemId, quantity, fulfillmentType = '' }) {
+export async function updateCartItem({ itemId, quantity, fulfillmentType = '', dishId }) {
   return mutateOfflineFirst(
     'cart',
     'UPDATE_ITEM',
-    { itemId, quantity, fulfillmentType },
+    { itemId, quantity, fulfillmentType, dishId },
     {
       local_id: itemId,
       server_id: itemId.startsWith('temp-') ? null : itemId,

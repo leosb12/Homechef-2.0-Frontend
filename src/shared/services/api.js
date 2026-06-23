@@ -1,7 +1,14 @@
 import axios from 'axios'
 import { supabase } from './supabase_client'
 
-export const API_URL = import.meta.env.VITE_API_URL || 'https://homechef-2-0-backend.onrender.com/api/v1'
+const runtimeConfig =
+  typeof window !== 'undefined' ? window.__HOMECHEF_RUNTIME_CONFIG || {} : {}
+
+export const API_URL =
+  runtimeConfig.VITE_API_URL ||
+  runtimeConfig.API_URL ||
+  import.meta.env.VITE_API_URL ||
+  'https://proyecto.leonardoserrate.xyz/api/v1'
 
 export const api = axios.create({
   baseURL: API_URL,
