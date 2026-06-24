@@ -133,7 +133,7 @@ export async function syncAdminNow(options = {}) {
         const attemptTime = new Date().toISOString();
 
         try {
-          const { data } = await api.get(step.path);
+          const { data } = await api.get(step.path, { timeout: 15000 });
           const payload = data?.data;
           
           if (step.key === 'audit_ai') {
