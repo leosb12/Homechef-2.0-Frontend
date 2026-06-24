@@ -63,7 +63,7 @@ export default function AdminSyncBadge() {
     browserOnline,
   } = useConnectivity();
 
-  const [showTooltip, setShowTooltip] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
   const [mutations, setMutations] = useState([]);
   const user = useAuthSession(state => state.user);
 
@@ -138,10 +138,30 @@ export default function AdminSyncBadge() {
     checkCacheOwnership();
   }, [user]);
 
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleOutsideClick = (e) => {
+      const popover = document.getElementById('sync-badge-popover');
+      const trigger = document.getElementById('sync-badge-trigger');
+      if (
+        popover &&
+        !popover.contains(e.target) &&
+        trigger &&
+        !trigger.contains(e.target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+    };
+  }, [isOpen]);
+
   const hasFailedModules = Object.values(moduleStatus).some(m => m.status === 'failed') || Object.keys(syncErrors).length > 0;
   const isOnline = backendReachable;
   const currentStatus = isOnline ? syncStatus : 'offline';
-  const showPopover = showTooltip || currentStatus === 'syncing';
+  const showPopover = isOpen;
   
   const handleSyncClick = async (e) => {
     e.stopPropagation();
@@ -213,15 +233,14 @@ export default function AdminSyncBadge() {
     <div className="relative flex items-center gap-2.5">
       {/* Estado Global Conectividad */}
       <div 
+        id="sync-badge-trigger"
         className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold select-none transition-all duration-300 cursor-pointer"
         style={{
           borderColor: 'rgba(148, 163, 184, 0.16)',
           backgroundColor: 'var(--panel-soft)',
           color: 'var(--text)',
         }}
-        onMouseEnter={() => setShowTooltip(true)}
-        onMouseLeave={() => setShowTooltip(false)}
-        onClick={() => setShowTooltip(!showTooltip)}
+        onClick={() => setIsOpen(!isOpen)}
       >
         <span 
           className="h-2.5 w-2.5 rounded-full"
@@ -258,7 +277,7 @@ export default function AdminSyncBadge() {
               <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
             </svg>
           )}
-          Sincronizar
+          <span className="hidden md:inline">Sincronizar</span>
         </span>
       </button>
 
@@ -280,7 +299,7 @@ export default function AdminSyncBadge() {
               <path d="M1 4v6h6M23 20v-6h-6" />
               <path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
             </svg>
-            Reintentar Fallidos
+            <span className="hidden md:inline">Reintentar Fallidos</span>
           </span>
         </button>
       )}
@@ -288,7 +307,8 @@ export default function AdminSyncBadge() {
       {/* Popover/Tooltip Details on Sync & Connectivity */}
       {showPopover && (
         <div 
-          className="absolute right-0 top-10 z-[100] w-80 rounded-2xl border p-4 text-xs shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200"
+          id="sync-badge-popover"
+          className="fixed inset-x-4 top-16 sm:absolute sm:inset-x-auto sm:right-0 sm:top-10 z-[100] sm:w-80 rounded-2xl border p-4 text-xs shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200"
           style={{
             borderColor: 'rgba(148, 163, 184, 0.18)',
             backgroundColor: 'var(--panel)',
@@ -297,8 +317,27 @@ export default function AdminSyncBadge() {
         >
           <div className="space-y-3.5 text-white">
             <h5 className="font-bold border-b pb-1.5 flex justify-between items-center" style={{ borderColor: 'var(--line)' }}>
-              <span>Infraestructura Offline / Red</span>
-              {syncStatus === 'syncing' && <span className="text-[10px] text-purple-300 font-normal">Progreso...</span>}
+              <span className="flex items-center gap-1.5">
+                <span>Infraestructura Offline / Red</span>
+                {syncStatus === 'syncing' && (
+                  <span className="text-[10px] text-purple-300 font-normal animate-pulse">
+                    (Progreso...)
+                  </span>
+                )}
+              </span>
+              <button 
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsOpen(false);
+                }}
+                className="text-slate-400 hover:text-white transition-colors p-1"
+                aria-label="Cerrar panel"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
             </h5>
             
             {/* Reachability stats */}
