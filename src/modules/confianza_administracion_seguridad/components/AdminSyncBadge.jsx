@@ -241,7 +241,7 @@ export default function AdminSyncBadge() {
       {/* Estado Global Conectividad */}
       <div 
         id="sync-badge-trigger"
-        className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold select-none transition-all duration-300 cursor-pointer"
+        className="flex items-center gap-1.5 rounded-full border px-2 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-semibold select-none transition-all duration-300 cursor-pointer whitespace-nowrap"
         style={{
           borderColor: 'rgba(148, 163, 184, 0.16)',
           backgroundColor: 'var(--panel-soft)',
@@ -259,10 +259,18 @@ export default function AdminSyncBadge() {
         }}
       >
         <span 
-          className="h-2.5 w-2.5 rounded-full"
+          className="h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full shrink-0"
           style={{ backgroundColor: CONN_COLORS[connectivityStatus] }}
         />
-        <span>{CONN_LABELS[connectivityStatus]}</span>
+        <span className="hidden sm:inline">{CONN_LABELS[connectivityStatus]}</span>
+        
+        {/* Mobile-only Wi-Fi signal icon */}
+        <svg className="sm:hidden h-3.5 w-3.5 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M5 12.55a11 11 0 0 1 14.08 0" />
+          <path d="M1.42 9a16 16 0 0 1 21.16 0" />
+          <path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+          <circle cx="12" cy="20" r="1.5" fill="currentColor" />
+        </svg>
         
         {pendingCount > 0 && (
           <span className="ml-1 rounded-full bg-indigo-500/20 px-1.5 py-0.5 text-[10px] font-bold text-indigo-400" title="Acciones pendientes">
@@ -276,13 +284,13 @@ export default function AdminSyncBadge() {
         type="button"
         disabled={syncStatus === 'syncing' || !isOnline}
         onClick={handleSyncClick}
-        className="relative overflow-hidden rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider text-white shadow-md transition-all duration-300 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
+        className="relative overflow-hidden rounded-xl px-2.5 py-2 sm:px-4 sm:py-2 text-xs font-bold uppercase tracking-wider text-white shadow-md transition-all duration-300 active:scale-95 disabled:pointer-events-none disabled:opacity-50"
         style={{
           background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
           boxShadow: '0 8px 20px rgba(109, 40, 217, 0.25)',
         }}
       >
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center justify-center gap-1.5">
           {syncStatus === 'syncing' ? (
             <svg className="h-3.5 w-3.5 animate-spin text-white" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
